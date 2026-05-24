@@ -1,5 +1,8 @@
 // 主逻辑
 
+// 后端地址（本地运行时用，GitHub Pages 上此地址不可用，会自动降级）
+const BACKEND_URL = 'http://localhost:8080'
+
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('travelForm')
     const resultSection = document.getElementById('result')
@@ -35,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return
         }
 
-        // 检查 API Key
+        // 检查 API Key（仅前端直连模式需要）
         if (!AI_CONFIG.apiKey) {
             showApiKeyPrompt()
             return
@@ -52,26 +55,50 @@ document.addEventListener('DOMContentLoaded', () => {
         resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
         
         try {
-            // 构建提示词
-            const prompt = buildPrompt(formData)
+            let plan = ''
             
-            // 调用AI
-            const result = await callAI(prompt)
+            // 优先尝试后端
+            try {
+                const resp = await fetch(`${BACKEND_URL}/api/generate-plan`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData),
+                    signal: AbortSignal.timeout(120000)
+                })
+                if (resp.ok) {
+                    const data = await resp.json()
+                    plan = data.plan
+                    
+                    // 尝试生成目的地图片
+                    fetch(`${BACKEND_URL}/api/generate-image`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ destination: formData.destination, style: '风景照' })
+                    }).then(r => r.json()).then(d => {
+                        if (d.image_url) {
+                            showImage(d.image_url, formData.destination)
+                        }
+                    }).catch(() => {})
+                } else {
+                    throw new Error('后端不可用')
+                }
+            } catch {
+                // 后端不可用，降级到前端直连
+                const prompt = buildPrompt(formData)
+                plan = await callAI(prompt)
+            }
             
             // 渲染结果
             loading.style.display = 'none'
             resultContent.style.display = 'block'
             
-            // 使用marked解析Markdown
             if (typeof marked !== 'undefined') {
-                resultBody.innerHTML = marked.parse(result)
+                resultBody.innerHTML = marked.parse(plan)
             } else {
-                // 如果marked没加载，直接显示文本
-                resultBody.innerHTML = '<pre>' + result + '</pre>'
+                resultBody.innerHTML = '<pre>' + plan + '</pre>'
             }
             
-            // 保存到localStorage
-            saveToHistory(formData, result)
+            saveToHistory(formData, plan)
             
         } catch (error) {
             loading.style.display = 'none'
@@ -93,6 +120,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })
 })
+
+// 显示生成的图片
+function showImage(url, destination) {
+    let imgBox = document.getElementById('generatedImage')
+    if (!imgBox) {
+        imgBox = document.createElement('div')
+        imgBox.id = 'generatedImage'
+        imgBox.style.cssText = 'margin-top:20px;text-align:center;'
+        const resultContent = document.getElementById('resultContent')
+        resultContent.appendChild(imgBox)
+    }
+    imgBox.innerHTML = `
+        <h3 style="margin-bottom:12px;">🖼️ ${destination} AI 生成风景</h3>
+        <img src="${url}" alt="${destination}" style="max-width:100%;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+    `
+}
 
 // 复制结果
 function copyResult() {
