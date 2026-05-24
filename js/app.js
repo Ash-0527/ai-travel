@@ -118,6 +118,11 @@ document.addEventListener('DOMContentLoaded', () => {
             loadHistory()
             // 同时刷新倒数日面板
             loadCountdowns()
+
+            // 展示地图
+            showMap(plan, formData.destination)
+            // 查询天气
+            fetchWeather(formData.destination)
             
         } catch (error) {
             loading.style.display = 'none'
@@ -197,6 +202,7 @@ window.shareTrip = shareTrip
 window.switchPanel = switchPanel
 window.loadTripDetail = loadTripDetail
 window.deleteTrip = deleteTrip
+window.exportPDF = exportPDF
 
 // 分享行程 — 打开干净的新页面
 function shareTrip() {
@@ -392,3 +398,101 @@ async function loadTripDetail(id) {
 
 // 页面初始化：加载偏好和面板
 loadPrefsAndHistory()
+
+// ============================================================
+// 🗺️ 地图展示
+// ============================================================
+let tripMap = null
+
+function showMap(planText, destination) {
+    const mapBox = document.getElementById('mapBox')
+    const mapDiv = document.getElementById('tripMap')
+
+    // 从行程方案中提取景点坐标 JSON
+    const jsonMatch = planText.match(/```json\s*([\s\S]*?)\s*```/)
+    let spots = []
+    if (jsonMatch) {
+        try { spots = JSON.parse(jsonMatch[1]) } catch {}
+    }
+    // 也尝试匹配裸 JSON 数组
+    if (spots.length === 0) {
+        const arrMatch = planText.match(/\[\s*\{[^]*?\}\s*\]/)
+        if (arrMatch) {
+            try { spots = JSON.parse(arrMatch[0]) } catch {}
+        }
+    }
+
+    if (spots.length === 0) {
+        mapBox.style.display = 'none'
+        return
+    }
+
+    mapBox.style.display = 'block'
+
+    // 初始化地图
+    if (tripMap) { tripMap.remove(); tripMap = null }
+    tripMap = L.map('tripMap').setView([spots[0].lat, spots[0].lng], 12)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+        maxZoom: 18
+    }).addTo(tripMap)
+
+    // 添加标记
+    const bounds = []
+    spots.forEach((spot, i) => {
+        const marker = L.marker([spot.lat, spot.lng])
+            .addTo(tripMap)
+            .bindPopup(`<b>${spot.name}</b>`)
+        bounds.push([spot.lat, spot.lng])
+    })
+
+    if (bounds.length > 1) {
+        tripMap.fitBounds(bounds, { padding: [40, 40] })
+    }
+
+    // 如果地图容器尺寸变化，刷新地图
+    setTimeout(() => tripMap.invalidateSize(), 100)
+}
+
+// ============================================================
+// 🌤️ 天气查询
+// ============================================================
+async function fetchWeather(city) {
+    const box = document.getElementById('weatherBox')
+    try {
+        const resp = await fetch(`${BACKEND_URL}/api/weather?city=${encodeURIComponent(city)}`)
+        if (!resp.ok) throw new Error('天气不可用')
+        const data = await resp.json()
+        showWeather(data)
+    } catch {
+        box.style.display = 'none'
+    }
+}
+
+function showWeather(data) {
+    const box = document.getElementById('weatherBox')
+    box.style.display = 'block'
+    box.innerHTML = `
+        <h3>🌤️ ${data.city} 天气</h3>
+        <div class="weather-current">
+            <span class="weather-temp">${data.current_temp || '--'}°C</span>
+            <span class="weather-desc">${data.current_desc || ''}  ·  湿度 ${data.humidity || '--'}%</span>
+        </div>
+        <div class="weather-forecast">
+            ${(data.forecast || []).map(d => `
+                <div class="forecast-day">
+                    <div class="date">${d.date || ''}</div>
+                    <div class="temp">${d.max_temp || '--'}° / ${d.min_temp || '--'}°</div>
+                    <div class="desc">${d.desc || ''}</div>
+                </div>
+            `).join('')}
+        </div>
+    `
+}
+
+// ============================================================
+// 📄 导出 PDF
+// ============================================================
+function exportPDF() {
+    window.print()
+}

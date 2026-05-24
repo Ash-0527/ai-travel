@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI旅行私人定制方案</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
 </head>
 <body>
@@ -108,9 +109,15 @@
                     <div style="display:flex;gap:10px;">
                         <button class="btn-copy" onclick="copyResult()">📋 复制</button>
                         <button class="btn-share" onclick="shareTrip()">📤 分享</button>
+                        <button class="btn-pdf" onclick="exportPDF()">🖨️ 导出PDF</button>
                     </div>
                 </div>
                 <div class="result-body" id="resultBody"></div>
+                <div class="weather-box" id="weatherBox" style="display:none;"></div>
+                <div class="map-box" id="mapBox" style="display:none;">
+                    <h3>🗺️ 行程地图</h3>
+                    <div id="tripMap" style="height:400px;border-radius:8px;"></div>
+                </div>
             </div>
         </section>
 
@@ -128,6 +135,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/api.js"></script>
     <script src="js/app.js"></script>
 </body>

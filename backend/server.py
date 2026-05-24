@@ -10,6 +10,7 @@ from pydantic import BaseModel
 import json
 import urllib.request
 import urllib.error
+import urllib.parse
 import os
 import math
 import sys
@@ -130,10 +131,12 @@ def generate_plan(req: TravelRequest):
 ## ✈️ 出发与到达
 ## 📋 行程概览
 ## 🗓️ 每日详细行程
+## 🗺️ 景点坐标（JSON 格式，列出行程中提到的所有景点。每个景点包含 name 景点名称、lat 纬度、lng 经度，只输出中国境内真实存在的景点，坐标务必准确）
 ## 🏨 住宿推荐
 ## 🍜 美食推荐
 ## 🚄 交通建议
 ## 💰 预算分配（表格）
+## 🎒 行李清单（贴心提醒情侣出行需要带的物品：证件类、衣物类、护肤类、电子设备、应急药品等，根据目的地和季节调整）
 ## 🎫 预订清单
 ## ⚠️ 注意事项
 
@@ -252,6 +255,49 @@ def list_countdowns():
 def remove_countdown(cd_id: int):
     delete_countdown(cd_id)
     return {"status": "ok"}
+
+# ============================================================
+# 天气 API（免费，基于 wttr.in）
+# ============================================================
+@app.get("/api/weather")
+def get_weather(city: str):
+    """获取目的地天气预报"""
+    try:
+        url = f"https://wttr.in/{urllib.parse.quote(city)}?format=j1&lang=zh"
+        req_obj = urllib.request.Request(url, headers={"User-Agent": "AI-Travel/1.0"})
+        with urllib.request.urlopen(req_obj, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        
+        # 提取关键信息
+        weather = data.get("weather", [{}])[0] if data.get("weather") else {}
+        current = data.get("current_condition", [{}])[0] if data.get("current_condition") else {}
+        
+        forecast = []
+        for day in weather.get("astronomy", []):
+            forecast.append({
+                "date": day.get("date", ""),
+                "max_temp": day.get("maxtempC", ""),
+                "min_temp": day.get("mintempC", ""),
+                "sunrise": day.get("sunrise", ""),
+                "sunset": day.get("sunset", ""),
+            })
+        # 合并 hourly 的天气描述
+        hourly = weather.get("hourly", [])
+        for i, f in enumerate(forecast[:7]):
+            idx = i * 8  # 每天取一个时段
+            if idx < len(hourly):
+                desc = hourly[idx].get("lang_zh", [{}])
+                f["desc"] = desc[0].get("value", "") if desc else ""
+        
+        return {
+            "city": city,
+            "current_temp": current.get("temp_C", ""),
+            "current_desc": (current.get("lang_zh", [{}]) or [{}])[0].get("value", ""),
+            "humidity": current.get("humidity", ""),
+            "forecast": forecast[:5]  # 未来5天
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"天气查询失败: {str(e)}")
 
 # ============================================================
 # 启动

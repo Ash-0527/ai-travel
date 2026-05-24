@@ -558,3 +558,139 @@ footer p {
     background: var(--accent-hover);
     transform: translateY(-1px);
 }
+
+.btn-pdf {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.btn-pdf:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Weather */
+.weather-box {
+    padding: 20px 28px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+}
+
+.weather-box h3 {
+    color: var(--accent);
+    margin-bottom: 12px;
+    font-size: 1rem;
+}
+
+.weather-current {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.weather-temp {
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+.weather-desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.weather-forecast {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.forecast-day {
+    min-width: 80px;
+    text-align: center;
+    padding: 10px;
+    background: var(--bg-input);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.forecast-day .date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.forecast-day .temp {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.forecast-day .desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* Map */
+.map-box {
+    padding: 20px 28px 28px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+}
+
+.map-box h3 {
+    color: var(--accent);
+    margin-bottom: 12px;
+    font-size: 1rem;
+}
+
+/* Print styles for PDF export */
+@media print {
+    body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    .input-section,
+    .panel-section,
+    footer,
+    .result-header,
+    .weather-box,
+    .map-box,
+    .btn-generate,
+    #generatedImage {
+        display: none !important;
+    }
+
+    .result-content {
+        border: 1px solid #ddd !important;
+        background: #fff !important;
+    }
+
+    .result-body {
+        max-height: none !important;
+        overflow: visible !important;
+        padding: 20px !important;
+    }
+
+    .result-body * {
+        color: #000 !important;
+    }
+
+    .result-body h2 {
+        color: #333 !important;
+        border-bottom-color: #ddd !important;
+    }
+
+    .container {
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
+}
