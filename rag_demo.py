@@ -12,7 +12,7 @@ import urllib.error
 # ============================================================
 # 配置
 # ============================================================
-ZHIPU_API_KEY = "259a8d14a01049c5882a313db56eb72b.6mJllCcegeLaMV4O"
+ZHIPU_API_KEY = os.environ.get("ZHIPU_API_KEY", "259a8d14a01049c5882a313db56eb72b.6mJllCcegeLaMV4O")
 EMBEDDING_MODEL = "embedding-2"
 CHAT_MODEL = "glm-4"
 KB_DIR = "/mnt/d/大模型学习资料/ai旅行/知识库"

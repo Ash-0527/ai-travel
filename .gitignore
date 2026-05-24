@@ -4,6 +4,13 @@
 *.xlsx
 *.zip
 
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 向量库（太大，含 API Key 调用痕迹）
+vector_db.json
+
 # 临时文件
 temp_*
 *.tmp

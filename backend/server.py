@@ -29,9 +29,14 @@ app.add_middleware(
 # ============================================================
 # 配置
 # ============================================================
-ZHIPU_API_KEY = "259a8d14a01049c5882a313db56eb72b.6mJllCcegeLaMV4O"
+ZHIPU_API_KEY = os.environ.get("ZHIPU_API_KEY", "")
 CHAT_MODEL = "glm-4"
 IMAGE_MODEL = "cogview-3-flash"
+
+# 启动检查
+if not ZHIPU_API_KEY and __name__ == "__main__":
+    print("⚠️ 请设置环境变量 ZHIPU_API_KEY")
+    print("   export ZHIPU_API_KEY=你的Key")
 
 # ============================================================
 # 工具函数
