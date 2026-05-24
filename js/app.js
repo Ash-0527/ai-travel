@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultBody = document.getElementById('resultBody')
     const generateBtn = document.getElementById('generateBtn')
     
+    // 出发日期默认今天
+    const today = new Date().toISOString().slice(0, 10)
+    document.getElementById('startDate').value = today
+    
     // 表单提交
     form.addEventListener('submit', async (e) => {
         e.preventDefault()
@@ -302,7 +306,6 @@ async function loadPrefsAndHistory() {
         }
         if (prefs.budget) document.getElementById('budget').value = prefs.budget
         if (prefs.transport) document.getElementById('transport').value = prefs.transport
-        if (prefs.preferences) document.getElementById('preferences').value = prefs.preferences
     } catch {}
 
     // 显示面板

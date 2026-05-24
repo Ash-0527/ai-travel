@@ -108,15 +108,15 @@ def generate_plan(req: TravelRequest):
     }
 
     prompt = f"""# 角色
-你是一位专业的旅行规划师。
+你是一位专业的旅行规划师。你必须**严格按照用户指定的出行方式**来规划交通，不得自行更改。
 
 # 用户需求
 - 出发地点：{req.origin}
 - 目的地：{req.destination}
 - 出发日期：{req.start_date}
 - 天数：{req.days}天
-- 人均预算：{req.budget}元
-- 出行方式偏好：{req.transport}
+- 人均预算：{req.budget}元（预算金额必须真实合理，机票/高铁票价格请基于常识估算实际票价，不要随意编造）
+- 出行方式：{req.transport}（必须严格按此方式规划！如果选了飞机就写航班，选高铁就写车次，选自驾就写驾车路线，不要混用）
 - 节奏偏好：{req.pace}
 - 出行人员：{req.people}
 - 特殊偏好：{req.preferences or '无特定要求'}
@@ -137,7 +137,7 @@ def generate_plan(req: TravelRequest):
 ## 🎫 预订清单
 ## ⚠️ 注意事项
 
-要求：详尽、具体、可执行。用 emoji 让输出生动。"""
+要求：详尽、具体、可执行。用 emoji 让输出生动。预算价格务必真实可信，基于中国国内市场实际价格水平。"""
 
     resp = call_zhipu("chat/completions", {
         "model": CHAT_MODEL,
