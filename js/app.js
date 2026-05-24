@@ -15,8 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateBtn = document.getElementById('generateBtn')
     
     // 出发日期默认今天
-    const today = new Date().toISOString().slice(0, 10)
-    document.getElementById('startDate').value = today
+    const dateInput = document.getElementById('startDate')
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().slice(0, 10)
+    }
     
     // 表单提交
     form.addEventListener('submit', async (e) => {
@@ -586,7 +588,14 @@ function showBudgetChart(planText) {
             const label = cols[0].replace(/[^\u4e00-\u9fa5]/g, '').slice(0, 6)
             // 跳过"总计""合计"行
             if (/总计|合计/.test(label)) continue
-            const val = parseInt(cols[1].replace(/[^0-9]/g, '')) || parseInt(cols[cols.length - 1].replace(/[^0-9]/g, ''))
+            // 智能解析价格：处理 "600-1200"、"600"、"约600" 等格式
+            const numStr = cols[1] || cols[cols.length - 1] || ''
+            const nums = numStr.match(/\d+/g)
+            let val = 0
+            if (nums && nums.length > 0) {
+                // 如果有多个数字（如区间价），取最后一个（最高价）
+                val = parseInt(nums[nums.length - 1])
+            }
             if (val && label) items.push({ label, val })
         }
     }
