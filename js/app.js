@@ -177,6 +177,65 @@ function saveToHistory(formData, result) {
 
 // 导出函数供全局使用
 window.copyResult = copyResult
+window.shareTrip = shareTrip
+window.switchPanel = switchPanel
+window.loadTripDetail = loadTripDetail
+
+// 分享行程 — 打开干净的新页面
+function shareTrip() {
+    const resultBody = document.getElementById('resultBody')
+    const destination = document.getElementById('destination').value
+    const startDate = document.getElementById('startDate').value
+    const content = resultBody.innerHTML
+    const imgBox = document.getElementById('generatedImage')
+    const imgHTML = imgBox ? imgBox.innerHTML : ''
+
+    const sharePage = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${destination} · AI旅行定制</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'PingFang SC','Microsoft YaHei',sans-serif; background: #0a0a0f; color: #f5f5f7; line-height: 1.8; }
+.container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+.hero { text-align: center; padding: 60px 0 40px; border-bottom: 1px solid #2a2a35; margin-bottom: 40px; }
+.hero h1 { font-size: 36px; font-weight: 300; margin-bottom: 8px; }
+.hero h1 span { color: #ff6b35; }
+.hero p { color: #6e6e73; font-size: 14px; }
+.content { background: #1a1a24; border-radius: 12px; padding: 40px; }
+.content h2 { color: #ff6b35; font-size: 20px; margin: 24px 0 12px; }
+.content h3 { font-size: 18px; margin: 16px 0 8px; }
+.content table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+.content td, .content th { padding: 8px 12px; border: 1px solid #2a2a35; text-align: left; font-size: 14px; }
+.content img { max-width: 100%; border-radius: 8px; margin-top: 20px; }
+.footer { text-align: center; padding: 40px 0; color: #3a3a45; font-size: 13px; }
+.footer span { color: #ff6b35; }
+@media print { body { background: #fff; color: #000; } .content { background: #fff; border: 1px solid #ddd; } }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="hero">
+    <h1>✈️ <span>${destination}</span> 旅行方案</h1>
+    <p>出发日期：${startDate} ｜ 专属定制 · 为你俩的旅行</p>
+</div>
+<div class="content">
+    ${content}
+    ${imgHTML}
+</div>
+<div class="footer">
+    <p>❤️ 由 <span>AI Travel</span> 私人定制生成</p>
+</div>
+</div>
+</body>
+</html>`
+
+    const win = window.open('', '_blank')
+    win.document.write(sharePage)
+    win.document.close()
+}
 
 // API Key 输入弹窗
 function showApiKeyPrompt() {

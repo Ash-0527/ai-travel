@@ -105,7 +105,10 @@
             <div class="result-content" id="resultContent" style="display: none;">
                 <div class="result-header">
                     <h2>📋 行程方案</h2>
-                    <button class="btn-copy" onclick="copyResult()">📋 复制全文</button>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn-copy" onclick="copyResult()">📋 复制</button>
+                        <button class="btn-share" onclick="shareTrip()">📤 分享</button>
+                    </div>
                 </div>
                 <div class="result-body" id="resultBody"></div>
             </div>

@@ -542,3 +542,19 @@ footer p {
     border-color: var(--accent);
     color: var(--accent);
 }
+
+.btn-share {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.btn-share:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
