@@ -100,6 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             saveToHistory(formData, plan)
             
+            // 刷新历史面板
+            loadHistory()
+            
         } catch (error) {
             loading.style.display = 'none'
             resultContent.style.display = 'block'
@@ -201,3 +204,106 @@ function updateKeyStatus() {
 
 // 页面加载时更新 Key 状态
 document.addEventListener('DOMContentLoaded', updateKeyStatus)
+
+// ============================================================
+// 偏好回填 & 历史面板
+// ============================================================
+async function loadPrefsAndHistory() {
+    try {
+        const resp = await fetch(`${BACKEND_URL}/api/prefs`)
+        if (!resp.ok) return
+        const prefs = await resp.json()
+
+        // 回填表单
+        if (prefs.pace) {
+            const radio = document.querySelector(`input[name="pace"][value="${prefs.pace}"]`)
+            if (radio) radio.checked = true
+        }
+        if (prefs.budget) document.getElementById('budget').value = prefs.budget
+        if (prefs.transport) document.getElementById('transport').value = prefs.transport
+        if (prefs.preferences) document.getElementById('preferences').value = prefs.preferences
+    } catch {}
+
+    // 显示面板
+    document.getElementById('historyPanel').style.display = 'block'
+    await loadHistory()
+}
+
+async function loadHistory() {
+    try {
+        const resp = await fetch(`${BACKEND_URL}/api/history`)
+        const trips = await resp.json()
+        const panel = document.getElementById('panelContent')
+
+        if (trips.length === 0) {
+            panel.innerHTML = '<div class="empty-state"><p>📭 还没有行程记录</p><p style="font-size:13px">生成第一个行程后会自动出现在这里</p></div>'
+            return
+        }
+
+        panel.innerHTML = '<div class="history-list">' + trips.map(t => `
+            <div class="history-item" onclick="loadTripDetail(${t.id})">
+                <div class="trip-info">
+                    <span class="trip-dest">${t.destination}</span>
+                    <span class="trip-meta">${t.days}天 · ${t.pace} · ¥${t.budget}</span>
+                </div>
+                <span class="trip-date">${t.created_at?.slice(0, 10) || ''}</span>
+            </div>
+        `).join('') + '</div>'
+    } catch {}
+}
+
+async function loadCountdowns() {
+    try {
+        const resp = await fetch(`${BACKEND_URL}/api/countdowns`)
+        const items = await resp.json()
+        const panel = document.getElementById('panelContent')
+
+        if (items.length === 0) {
+            panel.innerHTML = '<div class="empty-state"><p>⏰ 还没有倒数日</p><p style="font-size:13px">生成行程时会自动添加出发日期</p></div>'
+            return
+        }
+
+        panel.innerHTML = '<div class="countdown-list">' + items.map(c => `
+            <div class="countdown-item">
+                <div class="cd-info">
+                    <h4>${c.destination}${c.notes ? ' · ' + c.notes : ''}</h4>
+                    <p>出发日期：${c.departure_date}</p>
+                </div>
+                <div class="cd-days${c.days_left === 0 ? ' today' : ''}">
+                    ${c.days_left < 0 ? '✅' : c.days_left === 0 ? '🎉' : c.days_left}
+                    <small>${c.status}</small>
+                </div>
+            </div>
+        `).join('') + '</div>'
+    } catch {}
+}
+
+function switchPanel(tab) {
+    document.querySelectorAll('.panel-tab').forEach(b => b.classList.remove('active'))
+    event.target.classList.add('active')
+    if (tab === 'history') loadHistory()
+    else loadCountdowns()
+}
+
+async function loadTripDetail(id) {
+    try {
+        const resp = await fetch(`${BACKEND_URL}/api/history/${id}`)
+        const trip = await resp.json()
+        const resultBody = document.getElementById('resultBody')
+        const resultContent = document.getElementById('resultContent')
+        const resultSection = document.getElementById('result')
+
+        if (typeof marked !== 'undefined') {
+            resultBody.innerHTML = marked.parse(trip.plan)
+        } else {
+            resultBody.innerHTML = '<pre>' + trip.plan + '</pre>'
+        }
+
+        resultSection.style.display = 'block'
+        resultContent.style.display = 'block'
+        resultSection.scrollIntoView({ behavior: 'smooth' })
+    } catch {}
+}
+
+// 页面初始化：加载偏好和面板
+loadPrefsAndHistory()

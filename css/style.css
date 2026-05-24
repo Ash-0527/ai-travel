@@ -390,3 +390,155 @@ footer p {
 .result-body::-webkit-scrollbar-thumb:hover {
     background: var(--border-light);
 }
+
+/* ============================================================
+   面板区：历史行程 & 倒数日
+   ============================================================ */
+.panel-section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 30px 0 60px;
+}
+
+.panel-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+}
+
+.panel-tab {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 15px;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.panel-tab.active {
+    color: var(--accent);
+    background: rgba(255, 107, 53, 0.1);
+}
+
+.panel-tab:hover {
+    color: var(--text-primary);
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.history-item:hover {
+    border-color: var(--accent);
+}
+
+.history-item .trip-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.history-item .trip-dest {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.history-item .trip-meta {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.history-item .trip-date {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state p {
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.countdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.countdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.countdown-item .cd-info h4 {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.countdown-item .cd-info p {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.countdown-item .cd-days {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--accent);
+    text-align: center;
+    min-width: 70px;
+}
+
+.countdown-item .cd-days small {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.countdown-item .cd-days.today {
+    color: var(--success);
+}
+
+.btn-small {
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.btn-small:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
