@@ -4,6 +4,9 @@
 const BACKEND_URL = ''  // 前后端同端口，空就是当前地址
 
 document.addEventListener('DOMContentLoaded', () => {
+    // marked 配置：识别单换行
+    if (typeof marked !== 'undefined') marked.setOptions({ breaks: true, gfm: true })
+
     const form = document.getElementById('travelForm')
     const resultSection = document.getElementById('result')
     const loading = document.getElementById('loading')
@@ -576,6 +579,8 @@ function showBudgetChart(planText) {
         const cols = lines[i].split('|').map(c => c.trim()).filter(c => c)
         if (cols.length >= 2) {
             const label = cols[0].replace(/[^\u4e00-\u9fa5]/g, '').slice(0, 6)
+            // 跳过"总计""合计"行
+            if (/总计|合计/.test(label)) continue
             const val = parseInt(cols[1].replace(/[^0-9]/g, '')) || parseInt(cols[cols.length - 1].replace(/[^0-9]/g, ''))
             if (val && label) items.push({ label, val })
         }

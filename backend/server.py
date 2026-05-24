@@ -119,7 +119,7 @@ def generate_plan(req: TravelRequest, stream: bool = Query(False)):
 - 出发日期：{req.start_date}
 - 天数：{req.days}天
 - 人均预算：{req.budget}元（预算金额必须真实合理，机票/高铁票价格请基于常识估算实际票价，不要随意编造）
-- 出行方式：{req.transport}（必须严格按此方式规划！如果选了飞机就写航班，选高铁就写车次，选自驾就写驾车路线，不要混用）
+- 出行方式：{req.transport}（必须严格按此方式规划！如果选了飞机就写航班，选高铁就写车次，选自驾就写驾车路线，不要混用。航班号和车次仅供参考，非实时查询）
 - 节奏偏好：{req.pace}
 - 出行人员：{req.people}
 - 特殊偏好：{req.preferences or '无特定要求'}
@@ -360,28 +360,43 @@ def gaode_search(req: PlanTextRequest):
             section = m.group(1)
 
     # 按「第X天」分割
-    days_raw = re.split(r'(?:###?\s*)?第\s*(\d+)\s*天', section)
-    # days_raw: ['', '1', '...content...', '2', '...content...', ...]
-    day_spots = {}  # {day_num: [spot_names]}
-    current_day = None
-    for i, chunk in enumerate(days_raw):
-        if i == 0:
-            continue
-        if i % 2 == 1:  # day number
-            current_day = int(chunk)
-        elif current_day is not None:  # content
-            spots = []
-            for m in re.finditer(r'\*\*([^*]{2,20}?)\*\*', chunk):
-                name = m.group(1).strip()
-                if len(name) >= 2 and not name[0].isdigit():
-                    skip_words = ['预算','预订','注意','住宿','美食','交通','行李','清单',
-                                 '出发','到达','概览','行程','坐标','航班','车次','路线',
-                                 '酒店','民宿','餐厅','建议','提示','小时','分钟','公里',
-                                 '门票','人均','总计','上午','下午','晚上','早餐','午餐','晚餐']
-                    if not any(kw in name for kw in skip_words) and name not in spots:
-                        spots.append(name)
-            if spots:
-                day_spots[current_day] = spots
+    day_spots = {}
+    days_raw = re.split(r'(?:###?\s*)?(?:第|Day\s*)\s*(\d+)\s*(?:天|日)', section)
+    # 如果没匹配到，回退：全文提取不分天
+    if len(days_raw) <= 2:
+        all_spots = []
+        for m in re.finditer(r'\*\*([^*]{2,20}?)\*\*', section):
+            name = m.group(1).strip()
+            if len(name) >= 2 and not name[0].isdigit():
+                skip_words = ['预算','预订','注意','住宿','美食','交通','行李','清单',
+                             '出发','到达','概览','行程','坐标','航班','车次','路线',
+                             '酒店','民宿','餐厅','建议','提示','小时','分钟','公里',
+                             '门票','人均','总计','上午','下午','晚上','早餐','午餐','晚餐']
+                if not any(kw in name for kw in skip_words) and name not in all_spots:
+                    all_spots.append(name)
+        if all_spots:
+            day_spots = {1: all_spots}
+    else:
+        # days_raw: ['', '1', '...content...', '2', '...content...', ...]
+        current_day = None
+        for i, chunk in enumerate(days_raw):
+            if i == 0:
+                continue
+            if i % 2 == 1:  # day number
+                current_day = int(chunk)
+            elif current_day is not None:  # content
+                spots = []
+                for m in re.finditer(r'\*\*([^*]{2,20}?)\*\*', chunk):
+                    name = m.group(1).strip()
+                    if len(name) >= 2 and not name[0].isdigit():
+                        skip_words = ['预算','预订','注意','住宿','美食','交通','行李','清单',
+                                     '出发','到达','概览','行程','坐标','航班','车次','路线',
+                                     '酒店','民宿','餐厅','建议','提示','小时','分钟','公里',
+                                     '门票','人均','总计','上午','下午','晚上','早餐','午餐','晚餐']
+                        if not any(kw in name for kw in skip_words) and name not in spots:
+                            spots.append(name)
+                if spots:
+                    day_spots[current_day] = spots
 
     # 确定搜索城市
     search_city = req.city
