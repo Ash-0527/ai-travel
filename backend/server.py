@@ -15,8 +15,13 @@ import sys
 # 把 RAG 脚本的路径加进来
 sys.path.insert(0, "/mnt/d/大模型学习资料/ai旅行")
 from rag_demo import search, load_vector_db, generate_answer
+from db import init_db, save_prefs, load_prefs, save_trip, list_trips, get_trip
+from db import add_countdown, get_countdowns, delete_countdown
 
 app = FastAPI(title="AI Travel API")
+
+# 初始化数据库
+init_db()
 
 # 允许前端跨域访问
 app.add_middleware(
@@ -128,7 +133,20 @@ def generate_plan(req: TravelRequest):
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7
     })
-    return {"plan": resp["choices"][0]["message"]["content"]}
+    plan = resp["choices"][0]["message"]["content"]
+
+    # 自动保存偏好
+    save_prefs({
+        "pace": req.pace,
+        "budget": str(req.budget),
+        "transport": req.transport,
+        "preferences": req.preferences
+    })
+
+    # 自动保存行程历史
+    save_trip(req.origin, req.destination, req.start_date, req.days, req.budget, req.pace, req.preferences, plan)
+
+    return {"plan": plan}
 
 @app.post("/api/generate-image")
 def generate_image(req: ImageRequest):
@@ -156,6 +174,54 @@ def rag_query(req: RAGRequest):
                for _, item in results]
 
     return {"answer": answer, "sources": sources}
+
+# ============================================================
+# 偏好 API
+# ============================================================
+@app.get("/api/prefs")
+def get_prefs():
+    return load_prefs()
+
+@app.post("/api/prefs")
+def set_prefs(prefs: dict):
+    save_prefs(prefs)
+    return {"status": "ok"}
+
+# ============================================================
+# 行程历史 API
+# ============================================================
+@app.get("/api/history")
+def get_history(limit: int = 20):
+    return list_trips(limit)
+
+@app.get("/api/history/{trip_id}")
+def get_trip_detail(trip_id: int):
+    trip = get_trip(trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="行程不存在")
+    return trip
+
+# ============================================================
+# 倒数日 API
+# ============================================================
+class CountdownRequest(BaseModel):
+    destination: str
+    departure_date: str
+    notes: str = ""
+
+@app.post("/api/countdown")
+def create_countdown(req: CountdownRequest):
+    add_countdown(req.destination, req.departure_date, req.notes)
+    return {"status": "ok"}
+
+@app.get("/api/countdowns")
+def list_countdowns():
+    return get_countdowns()
+
+@app.delete("/api/countdown/{cd_id}")
+def remove_countdown(cd_id: int):
+    delete_countdown(cd_id)
+    return {"status": "ok"}
 
 # ============================================================
 # 启动
