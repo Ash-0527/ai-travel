@@ -60,67 +60,112 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             let plan = ''
+            const body = JSON.stringify({
+                origin: formData.origin,
+                destination: formData.destination,
+                start_date: formData.startDate,
+                days: parseInt(formData.days),
+                budget: parseInt(formData.budget),
+                pace: formData.pace,
+                people: formData.people,
+                preferences: formData.preferences,
+                transport: formData.transport
+            })
             
-            // 优先尝试后端
+            // 优先尝试后端流式
             try {
-                const resp = await fetch(`${BACKEND_URL}/api/generate-plan`, {
+                const resp = await fetch(`${BACKEND_URL}/api/generate-plan?stream=true`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        origin: formData.origin,
-                        destination: formData.destination,
-                        start_date: formData.startDate,
-                        days: parseInt(formData.days),
-                        budget: parseInt(formData.budget),
-                        pace: formData.pace,
-                        people: formData.people,
-                        preferences: formData.preferences,
-                        transport: formData.transport
-                    }),
-                    signal: AbortSignal.timeout(120000)
+                    body: body,
+                    signal: AbortSignal.timeout(180000)
                 })
-                if (resp.ok) {
-                    const data = await resp.json()
-                    plan = data.plan
+                
+                if (!resp.ok) throw new Error('后端不可用')
+                
+                // 流式读取 SSE
+                const reader = resp.body.getReader()
+                const decoder = new TextDecoder()
+                let buffer = ''
+                let firstChunk = true
+                
+                while (true) {
+                    const { done, value } = await reader.read()
+                    if (done) break
                     
-                    // 尝试生成目的地图片
-                    fetch(`${BACKEND_URL}/api/generate-image`, {
+                    buffer += decoder.decode(value, { stream: true })
+                    const lines = buffer.split('\n')
+                    buffer = lines.pop() || ''
+                    
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue
+                        const dataStr = line.slice(6)
+                        if (dataStr === '[DONE]') continue
+                        try {
+                            const chunk = JSON.parse(dataStr)
+                            if (chunk.error) throw new Error(chunk.error)
+                            if (chunk.content) {
+                                plan += chunk.content
+                                if (firstChunk) {
+                                    firstChunk = false
+                                    loading.style.display = 'none'
+                                    resultContent.style.display = 'block'
+                                    resultBody.innerHTML = ''
+                                }
+                                // 逐字追加渲染
+                                resultBody.innerHTML = marked.parse(plan)
+                                resultSection.scrollIntoView({ behavior: 'smooth', block: 'end' })
+                            }
+                        } catch {}
+                    }
+                }
+                
+                if (!plan) throw new Error('空回复')
+                
+            } catch (streamErr) {
+                // 流式失败，降级到非流式
+                try {
+                    const resp = await fetch(`${BACKEND_URL}/api/generate-plan`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ destination: formData.destination, style: '风景照' })
-                    }).then(r => r.json()).then(d => {
-                        if (d.image_url) {
-                            showImage(d.image_url, formData.destination)
-                        }
-                    }).catch(() => {})
-                } else {
-                    throw new Error('后端不可用')
+                        body: body,
+                        signal: AbortSignal.timeout(120000)
+                    })
+                    if (resp.ok) {
+                        const data = await resp.json()
+                        plan = data.plan
+                    } else {
+                        throw streamErr
+                    }
+                } catch {
+                    // 都失败，降级到前端直连
+                    const prompt = buildPrompt(formData)
+                    plan = await callAI(prompt)
                 }
-            } catch {
-                // 后端不可用，降级到前端直连
-                const prompt = buildPrompt(formData)
-                plan = await callAI(prompt)
             }
             
-            // 渲染结果
-            loading.style.display = 'none'
-            resultContent.style.display = 'block'
-            
-            if (typeof marked !== 'undefined') {
-                resultBody.innerHTML = marked.parse(plan)
-            } else {
-                resultBody.innerHTML = '<pre>' + plan + '</pre>'
+            // 非流式模式下渲染
+            if (loading.style.display !== 'none') {
+                loading.style.display = 'none'
+                resultContent.style.display = 'block'
+                resultBody.innerHTML = typeof marked !== 'undefined' ? marked.parse(plan) : '<pre>' + plan + '</pre>'
             }
             
+            // 生图
+            fetch(`${BACKEND_URL}/api/generate-image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ destination: formData.destination, style: '风景照' })
+            }).then(r => r.json()).then(d => {
+                if (d.image_url) showImage(d.image_url, formData.destination)
+            }).catch(() => {})
+
             saveToHistory(formData, plan)
-            
-            // 刷新历史面板
             loadHistory()
-            // 同时刷新倒数日面板
             loadCountdowns()
 
-            // 展示地图
-            showMap(plan, formData.destination)
+            // 高德搜索真实坐标 + 展示地图
+            searchGaodeSpots(plan, formData.destination)
             // 查询天气
             fetchWeather(formData.destination)
             
@@ -400,49 +445,50 @@ async function loadTripDetail(id) {
 loadPrefsAndHistory()
 
 // ============================================================
-// 🗺️ 地图展示
+// 🗺️ 地图展示（高德 POI 搜索）
 // ============================================================
 let tripMap = null
 
-function showMap(planText, destination) {
+async function searchGaodeSpots(planText, city) {
     const mapBox = document.getElementById('mapBox')
-    const mapDiv = document.getElementById('tripMap')
-
-    // 从行程方案中提取景点坐标 JSON
-    const jsonMatch = planText.match(/```json\s*([\s\S]*?)\s*```/)
-    let spots = []
-    if (jsonMatch) {
-        try { spots = JSON.parse(jsonMatch[1]) } catch {}
-    }
-    // 也尝试匹配裸 JSON 数组
-    if (spots.length === 0) {
-        const arrMatch = planText.match(/\[\s*\{[^]*?\}\s*\]/)
-        if (arrMatch) {
-            try { spots = JSON.parse(arrMatch[0]) } catch {}
+    try {
+        const resp = await fetch(`${BACKEND_URL}/api/gaode-search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan_text: planText, city: city })
+        })
+        if (!resp.ok) throw new Error('搜索失败')
+        const data = await resp.json()
+        if (!data.spots || data.spots.length === 0) {
+            mapBox.style.display = 'none'
+            return
         }
-    }
-
-    if (spots.length === 0) {
+        showMapOnLeaflet(data.spots)
+    } catch {
         mapBox.style.display = 'none'
-        return
     }
+}
 
+function showMapOnLeaflet(spots) {
+    const mapBox = document.getElementById('mapBox')
     mapBox.style.display = 'block'
 
-    // 初始化地图
     if (tripMap) { tripMap.remove(); tripMap = null }
-    tripMap = L.map('tripMap').setView([spots[0].lat, spots[0].lng], 12)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
+
+    tripMap = L.map('tripMap').setView([spots[0].lat, spots[0].lng], 13)
+    
+    // 使用高德瓦片（中文标注，国内更清晰）
+    L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+        subdomains: ['1', '2', '3', '4'],
+        attribution: '&copy; 高德地图',
         maxZoom: 18
     }).addTo(tripMap)
 
-    // 添加标记
     const bounds = []
-    spots.forEach((spot, i) => {
+    spots.forEach(spot => {
         const marker = L.marker([spot.lat, spot.lng])
             .addTo(tripMap)
-            .bindPopup(`<b>${spot.name}</b>`)
+            .bindPopup(`<b>${spot.name}</b><br><small>${spot.address || ''}</small>`)
         bounds.push([spot.lat, spot.lng])
     })
 
@@ -450,8 +496,7 @@ function showMap(planText, destination) {
         tripMap.fitBounds(bounds, { padding: [40, 40] })
     }
 
-    // 如果地图容器尺寸变化，刷新地图
-    setTimeout(() => tripMap.invalidateSize(), 100)
+    setTimeout(() => tripMap.invalidateSize(), 200)
 }
 
 // ============================================================

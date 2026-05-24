@@ -9,6 +9,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
 </head>
 <body>
+    <canvas id="particles"></canvas>
     <div class="container">
         <header>
             <div class="logo">✈️ AI Travel</div>
@@ -138,5 +139,71 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/api.js"></script>
     <script src="js/app.js"></script>
+    <script>
+    // 粒子背景动画
+    (() => {
+        const canvas = document.getElementById('particles')
+        const ctx = canvas.getContext('2d')
+        let particles = []
+        const max = 60
+
+        function resize() {
+            canvas.width = window.innerWidth
+            canvas.height = window.innerHeight
+        }
+        resize()
+        window.addEventListener('resize', resize)
+
+        class Particle {
+            constructor() {
+                this.reset()
+                this.y = Math.random() * canvas.height
+            }
+            reset() {
+                this.x = Math.random() * canvas.width
+                this.y = -10
+                this.size = Math.random() * 2 + 0.5
+                this.speed = Math.random() * 0.5 + 0.2
+                this.opacity = Math.random() * 0.5 + 0.2
+            }
+            update() {
+                this.y += this.speed
+                this.x += Math.sin(this.y * 0.01) * 0.3
+                if (this.y > canvas.height + 10) this.reset()
+            }
+            draw() {
+                ctx.beginPath()
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
+                ctx.fillStyle = `rgba(255, 107, 53, ${this.opacity})`
+                ctx.fill()
+            }
+        }
+
+        for (let i = 0; i < max; i++) particles.push(new Particle())
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            particles.forEach(p => { p.update(); p.draw() })
+            // 连线
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x
+                    const dy = particles[i].y - particles[j].y
+                    const dist = Math.sqrt(dx * dx + dy * dy)
+                    if (dist < 120) {
+                        ctx.beginPath()
+                        ctx.moveTo(particles[i].x, particles[i].y)
+                        ctx.lineTo(particles[j].x, particles[j].y)
+                        ctx.strokeStyle = `rgba(255, 107, 53, ${0.08 * (1 - dist / 120)})`
+                        ctx.lineWidth = 0.5
+                        ctx.stroke()
+                    }
+                }
+            }
+            requestAnimationFrame(animate)
+        }
+        animate()
+    })()
+    </script>
 </body>
 </html>

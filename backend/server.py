@@ -2,10 +2,10 @@
 AI 旅行定制 - FastAPI 后端
 提供：行程生成 / AI 生图 / RAG 知识库问答
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 import json
 import urllib.request
@@ -13,6 +13,7 @@ import urllib.error
 import urllib.parse
 import os
 import math
+import re
 import sys
 
 # 把 RAG 脚本的路径加进来
@@ -40,6 +41,7 @@ app.add_middleware(
 ZHIPU_API_KEY = os.environ.get("ZHIPU_API_KEY", "")
 CHAT_MODEL = "glm-4"
 IMAGE_MODEL = "cogview-3-flash"
+GAODE_KEY = "7cdd7af52f093440a211cb7db78f59df"  # 高德地图 Web服务 Key
 
 # 启动检查
 if not ZHIPU_API_KEY and __name__ == "__main__":
@@ -100,15 +102,15 @@ def index():
     return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
 @app.post("/api/generate-plan")
-def generate_plan(req: TravelRequest):
-    """生成旅行行程方案"""
+def generate_plan(req: TravelRequest, stream: bool = Query(False)):
+    """生成旅行行程方案，支持流式输出"""
     people_desc = {
         "情侣": "2人，情侣。女生喜欢拍照、喜欢漂亮风景、喜欢打卡、不喜欢排队。男生喜欢随意放松。",
         "朋友": "2-4人，朋友出行。喜欢自由、轻松，不喜欢太赶。",
         "家人": "2-4人，家人出行。需要兼顾不同年龄段，节奏适中。"
     }
 
-    prompt = f"""# 角色
+    prompt_text = f"""# 角色
 你是一位专业的旅行规划师。你必须**严格按照用户指定的出行方式**来规划交通，不得自行更改。
 
 # 用户需求
@@ -142,34 +144,72 @@ def generate_plan(req: TravelRequest):
 
 要求：详尽、具体、可执行。用 emoji 让输出生动。预算价格务必真实可信，基于中国国内市场实际价格水平。"""
 
-    resp = call_zhipu("chat/completions", {
-        "model": CHAT_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7
-    })
-    plan = resp["choices"][0]["message"]["content"]
+    if not stream:
+        # 非流式：一次性返回
+        resp = call_zhipu("chat/completions", {
+            "model": CHAT_MODEL,
+            "messages": [{"role": "user", "content": prompt_text}],
+            "temperature": 0.7
+        })
+        plan = resp["choices"][0]["message"]["content"]
 
-    # 自动保存偏好
-    save_prefs({
-        "pace": req.pace,
-        "budget": str(req.budget),
-        "transport": req.transport,
-        "preferences": req.preferences
-    })
+        # 自动保存
+        save_prefs({"pace": req.pace, "budget": str(req.budget), "transport": req.transport, "preferences": req.preferences})
+        save_trip(req.origin, req.destination, req.start_date, req.days, req.budget, req.pace, req.preferences, plan)
+        existing = get_countdowns()
+        if not any(c["destination"] == req.destination and c["departure_date"] == req.start_date for c in existing):
+            add_countdown(req.destination, req.start_date, f"{req.days}天行程")
 
-    # 自动保存行程历史
-    save_trip(req.origin, req.destination, req.start_date, req.days, req.budget, req.pace, req.preferences, plan)
+        return {"plan": plan}
 
-    # 自动添加倒数日（如果还没有的话）
-    existing = get_countdowns()
-    already = any(
-        c["destination"] == req.destination and c["departure_date"] == req.start_date
-        for c in existing
-    )
-    if not already:
-        add_countdown(req.destination, req.start_date, f"{req.days}天行程")
+    # 流式输出
+    def stream_response():
+        full_text = ""
+        try:
+            url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+            body = json.dumps({
+                "model": CHAT_MODEL,
+                "messages": [{"role": "user", "content": prompt_text}],
+                "temperature": 0.7,
+                "stream": True
+            }).encode("utf-8")
+            req_obj = urllib.request.Request(url, data=body, method="POST")
+            req_obj.add_header("Authorization", f"Bearer {ZHIPU_API_KEY}")
+            req_obj.add_header("Content-Type", "application/json")
 
-    return {"plan": plan}
+            with urllib.request.urlopen(req_obj, timeout=120) as resp:
+                for line in resp:
+                    line = line.decode("utf-8").strip()
+                    if not line or not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                        delta = chunk.get("choices", [{}])[0].get("delta", {})
+                        content = delta.get("content", "")
+                        if content:
+                            full_text += content
+                            yield f"data: {json.dumps({'content': content})}\n\n"
+                    except json.JSONDecodeError:
+                        continue
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        finally:
+            # 流结束后保存数据
+            if full_text.strip():
+                try:
+                    save_prefs({"pace": req.pace, "budget": str(req.budget), "transport": req.transport, "preferences": req.preferences})
+                    save_trip(req.origin, req.destination, req.start_date, req.days, req.budget, req.pace, req.preferences, full_text)
+                    existing = get_countdowns()
+                    if not any(c["destination"] == req.destination and c["departure_date"] == req.start_date for c in existing):
+                        add_countdown(req.destination, req.start_date, f"{req.days}天行程")
+                except:
+                    pass
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(stream_response(), media_type="text/event-stream")
 
 @app.post("/api/generate-image")
 def generate_image(req: ImageRequest):
@@ -298,6 +338,53 @@ def get_weather(city: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"天气查询失败: {str(e)}")
+
+# ============================================================
+# 高德地图 POI 搜索
+# ============================================================
+class PlanTextRequest(BaseModel):
+    plan_text: str
+    city: str = ""
+
+@app.post("/api/gaode-search")
+def gaode_search(req: PlanTextRequest):
+    """从行程方案中提取景点名，通过高德搜索真实坐标"""
+    # 从 Markdown 中提取景点名（提取 **景点名** 或 #### 景点名 或 - **景点名**）
+    spots = set()
+    # 匹配 **xxx** 加中文
+    for m in re.finditer(r'\*\*([^*]{2,20}?)\*\*', req.plan_text):
+        name = m.group(1).strip()
+        if len(name) >= 2 and not name[0].isdigit() and not any(kw in name for kw in ['预算', '预订', '注意', '住宿', '美食', '交通', '行李', '清单', '出发', '到达', '概览', '行程', '坐标', '航班', '车次', '路线']):
+            spots.add(name)
+    # 也匹配 ### 标题
+    for m in re.finditer(r'#{2,4}\s+([^*#\n]{2,20})', req.plan_text):
+        name = m.group(1).strip()
+        if len(name) >= 2:
+            spots.add(name)
+
+    results = []
+    for name in list(spots)[:10]:  # 最多搜10个
+        try:
+            search_url = f"https://restapi.amap.com/v5/place/text?keywords={urllib.parse.quote(name)}&city={urllib.parse.quote(req.city or '全国')}&key={GAODE_KEY}&offset=1"
+            req_obj = urllib.request.Request(search_url)
+            with urllib.request.urlopen(req_obj, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            pois = data.get("pois", [])
+            if pois:
+                p = pois[0]
+                loc = p.get("location", "0,0").split(",")
+                results.append({
+                    "name": p.get("name", name),
+                    "lat": float(loc[1]) if len(loc) > 1 else 0,
+                    "lng": float(loc[0]) if len(loc) > 0 else 0,
+                    "address": p.get("address", ""),
+                    "distance": p.get("distance", "")
+                })
+        except:
+            pass
+
+    return {"spots": results}
+
 
 # ============================================================
 # 启动
