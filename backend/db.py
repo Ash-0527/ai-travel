@@ -105,6 +105,13 @@ def get_trip(trip_id):
     conn.close()
     return dict(row) if row else None
 
+def delete_history(trip_id):
+    """删除一条行程记录"""
+    conn = get_db()
+    conn.execute("DELETE FROM trip_history WHERE id=?", (trip_id,))
+    conn.commit()
+    conn.close()
+
 # ============================================================
 # 倒数日操作
 # ============================================================
@@ -136,6 +143,14 @@ def get_countdowns():
 def delete_countdown(cd_id):
     conn = get_db()
     conn.execute("DELETE FROM countdowns WHERE id=?", (cd_id,))
+    conn.commit()
+    conn.close()
+
+def delete_countdown_by_dest(destination, departure_date):
+    """根据目的地和日期删除倒数日（删行程时联动）"""
+    conn = get_db()
+    conn.execute("DELETE FROM countdowns WHERE destination=? AND departure_date=?", 
+                 (destination, departure_date))
     conn.commit()
     conn.close()
 

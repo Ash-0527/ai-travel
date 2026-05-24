@@ -4,6 +4,8 @@ AI 旅行定制 - FastAPI 后端
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import json
 import urllib.request
@@ -15,7 +17,7 @@ import sys
 # 把 RAG 脚本的路径加进来
 sys.path.insert(0, "/mnt/d/大模型学习资料/ai旅行")
 from rag_demo import search, load_vector_db, generate_answer
-from db import init_db, save_prefs, load_prefs, save_trip, list_trips, get_trip
+from db import init_db, save_prefs, load_prefs, save_trip, list_trips, get_trip, delete_history, delete_countdown_by_dest
 from db import add_countdown, get_countdowns, delete_countdown
 
 app = FastAPI(title="AI Travel API")
@@ -86,6 +88,15 @@ class ImageRequest(BaseModel):
 @app.get("/api/health")
 def health():
     return {"status": "ok", "service": "AI Travel API"}
+
+# 托管前端静态文件
+FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..")
+app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
+app.mount("/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
+
+@app.get("/")
+def index():
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
 @app.post("/api/generate-plan")
 def generate_plan(req: TravelRequest):
@@ -200,6 +211,16 @@ def get_trip_detail(trip_id: int):
     if not trip:
         raise HTTPException(status_code=404, detail="行程不存在")
     return trip
+
+@app.delete("/api/history/{trip_id}")
+def delete_trip(trip_id: int):
+    trip = get_trip(trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="行程不存在")
+    delete_history(trip_id)
+    # 同步删对应倒数日
+    delete_countdown_by_dest(trip["destination"], trip["start_date"])
+    return {"status": "ok"}
 
 # ============================================================
 # 倒数日 API

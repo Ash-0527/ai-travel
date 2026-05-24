@@ -1,7 +1,7 @@
 // 主逻辑
 
 // 后端地址（本地运行时用，GitHub Pages 上此地址不可用，会自动降级）
-const BACKEND_URL = 'http://localhost:8080'
+const BACKEND_URL = ''  // 前后端同端口，空就是当前地址
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('travelForm')
@@ -62,7 +62,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const resp = await fetch(`${BACKEND_URL}/api/generate-plan`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData),
+                    body: JSON.stringify({
+                        origin: formData.origin,
+                        destination: formData.destination,
+                        start_date: formData.startDate,
+                        days: parseInt(formData.days),
+                        budget: parseInt(formData.budget),
+                        pace: formData.pace,
+                        people: formData.people,
+                        preferences: formData.preferences,
+                        transport: formData.transport
+                    }),
                     signal: AbortSignal.timeout(120000)
                 })
                 if (resp.ok) {
@@ -180,6 +190,7 @@ window.copyResult = copyResult
 window.shareTrip = shareTrip
 window.switchPanel = switchPanel
 window.loadTripDetail = loadTripDetail
+window.deleteTrip = deleteTrip
 
 // 分享行程 — 打开干净的新页面
 function shareTrip() {
@@ -235,6 +246,15 @@ body { font-family: 'PingFang SC','Microsoft YaHei',sans-serif; background: #0a0
     const win = window.open('', '_blank')
     win.document.write(sharePage)
     win.document.close()
+}
+
+async function deleteTrip(id) {
+    if (!confirm('确定删除这条行程记录吗？对应的倒数日也会一起删除。')) return
+    try {
+        await fetch(`${BACKEND_URL}/api/history/${id}`, { method: 'DELETE' })
+        loadHistory()
+        loadCountdowns()
+    } catch {}
 }
 
 // API Key 输入弹窗
@@ -300,12 +320,13 @@ async function loadHistory() {
         }
 
         panel.innerHTML = '<div class="history-list">' + trips.map(t => `
-            <div class="history-item" onclick="loadTripDetail(${t.id})">
-                <div class="trip-info">
+            <div class="history-item">
+                <div class="trip-info" onclick="loadTripDetail(${t.id})" style="flex:1;cursor:pointer;">
                     <span class="trip-dest">${t.destination}</span>
                     <span class="trip-meta">${t.days}天 · ${t.pace} · ¥${t.budget}</span>
                 </div>
                 <span class="trip-date">${t.created_at?.slice(0, 10) || ''}</span>
+                <button class="btn-small" onclick="event.stopPropagation();deleteTrip(${t.id})" style="margin-left:12px;">🗑️</button>
             </div>
         `).join('') + '</div>'
     } catch {}
