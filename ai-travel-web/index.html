@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI旅行私人定制方案</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">✈️ AI Travel</div>
+            <h1>AI旅行私人定制方案</h1>
+            <p class="subtitle">告别繁琐攻略，一键生成你的专属行程</p>
+        </header>
+
+        <section class="input-section">
+            <form id="travelForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>🏠 出发地点</label>
+                        <input type="text" id="origin" placeholder="例如：杭州、上海、北京" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>🎯 目的地</label>
+                        <input type="text" id="destination" placeholder="例如：大理、丽江、杭州" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>📅 出发日期</label>
+                        <input type="date" id="startDate" value="2026-05-15" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>📅 天数</label>
+                        <select id="days">
+                            <option value="2">2天</option>
+                            <option value="3">3天</option>
+                            <option value="4" selected>4天</option>
+                            <option value="5">5天</option>
+                            <option value="6">6天</option>
+                            <option value="7">7天</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>💰 人均预算（元）</label>
+                        <input type="number" id="budget" placeholder="例如：2000" value="2000" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>🚄 出行方式</label>
+                        <select id="transport">
+                            <option value="高铁">高铁</option>
+                            <option value="飞机">飞机</option>
+                            <option value="自驾">自驾</option>
+                            <option value="都可以">都可以</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>⚡ 节奏偏好</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="pace" value="特种兵">
+                            <span>特种兵（多打卡）</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="pace" value="放松" checked>
+                            <span>放松度假（睡到自然醒）</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="pace" value="综合">
+                            <span>综合混搭</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>💑 出行人员</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="people" value="情侣" checked>
+                            <span>👫 情侣</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="people" value="朋友">
+                            <span>👭 朋友</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="people" value="家人">
+                            <span>👨‍👩‍👧 家人</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>✨ 特殊偏好（选填）</label>
+                    <textarea id="preferences" placeholder="例如：喜欢拍照、不爱排队、想吃当地美食、想看日出"></textarea>
+                </div>
+
+                <button type="submit" class="btn-generate" id="generateBtn">
+                    🚀 生成专属行程方案
+                </button>
+            </form>
+        </section>
+
+        <section class="result-section" id="result">
+            <div class="loading" id="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p class="loading-text">AI正在为你生成专属行程...</p>
+                <p class="loading-hint">通常需要15-30秒，请耐心等待</p>
+            </div>
+            
+            <div class="result-content" id="resultContent" style="display: none;">
+                <div class="result-header">
+                    <h2>📋 行程方案</h2>
+                    <button class="btn-copy" onclick="copyResult()">📋 复制全文</button>
+                </div>
+                <div class="result-body" id="resultBody"></div>
+            </div>
+        </section>
+
+        <footer>
+            <p>Powered by AI · 免费使用 · 持续迭代中</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
