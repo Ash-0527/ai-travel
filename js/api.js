@@ -1,10 +1,15 @@
 // AI API 配置
-// 请替换为你的智谱AI API Key
-// 获取地址：https://open.bigmodel.cn/
+// API Key 存储在浏览器 localStorage 中，不会暴露在代码里
+// 获取免费 Key：https://open.bigmodel.cn/
 
 const AI_CONFIG = {
-    // 在这里填入你的API Key
-    apiKey: '259a8d14a01049c5882a313db56eb72b.6mJllCcegeLaMV4O',
+    // 从 localStorage 读取 Key，首次使用时会提示输入
+    get apiKey() {
+        return localStorage.getItem('zhipu_api_key') || ''
+    },
+    set apiKey(val) {
+        localStorage.setItem('zhipu_api_key', val)
+    },
     baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
     model: 'glm-4'
 }

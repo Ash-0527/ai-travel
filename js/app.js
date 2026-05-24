@@ -34,6 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('请选择出发日期')
             return
         }
+
+        // 检查 API Key
+        if (!AI_CONFIG.apiKey) {
+            showApiKeyPrompt()
+            return
+        }
         
         // 显示加载状态
         resultSection.style.display = 'block'
@@ -125,3 +131,30 @@ function saveToHistory(formData, result) {
 
 // 导出函数供全局使用
 window.copyResult = copyResult
+
+// API Key 输入弹窗
+function showApiKeyPrompt() {
+    const currentKey = AI_CONFIG.apiKey
+    const key = prompt(
+        (currentKey ? '🔑 当前已有 Key，输入新 Key 替换，或点取消保留：\n\n' : '🔑 请输入智谱 AI API Key\n\n') +
+        '获取免费 Key：https://open.bigmodel.cn\n' +
+        '注册后进入「API Keys」页面创建即可\n\n' +
+        '（Key 仅保存在你的浏览器中，不会上传）',
+        currentKey ? '(已设置，内容已隐藏)' : ''
+    )
+    if (key && key.trim() && key !== '(已设置，内容已隐藏)') {
+        AI_CONFIG.apiKey = key.trim()
+        updateKeyStatus()
+        alert('✅ Key 已保存！')
+    }
+}
+
+function updateKeyStatus() {
+    const label = document.getElementById('apiKeyLabel')
+    if (label) {
+        label.textContent = AI_CONFIG.apiKey ? '✅ API Key 已设置（点击修改）' : '未设置API Key（点击设置）'
+    }
+}
+
+// 页面加载时更新 Key 状态
+document.addEventListener('DOMContentLoaded', updateKeyStatus)
