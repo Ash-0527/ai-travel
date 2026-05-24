@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
             budget: document.getElementById('budget').value,
             transport: document.getElementById('transport').value,
             pace: document.querySelector('input[name="pace"]:checked')?.value || '放松',
-            people: document.querySelector('input[name="people"]:checked')?.value || '情侣',
+            people: '情侣',  // 私人定制，固定为情侣模式
             preferences: document.getElementById('preferences').value.trim()
         }
         
