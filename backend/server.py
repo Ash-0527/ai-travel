@@ -348,72 +348,81 @@ class PlanTextRequest(BaseModel):
 
 @app.post("/api/gaode-search")
 def gaode_search(req: PlanTextRequest):
-    """从行程方案中提取景点名，通过高德搜索真实坐标"""
-    # 只从「每日详细行程」section 提取景点名，避免搜到文中提到的其他城市
+    """从行程方案中提取景点名，通过高德搜索真实坐标，按天分组"""
+    # 提取「每日详细行程」section
     section = req.plan_text
     m = re.search(r'##\s*🗓️\s*每日详细行程\s*\n(.*?)(?=##\s|\Z)', req.plan_text, re.DOTALL)
     if m:
         section = m.group(1)
     else:
-        # 回退：也尝试「景点坐标」section
         m = re.search(r'##\s*🗺️\s*景点坐标.*?\n(.*?)(?=##\s|\Z)', req.plan_text, re.DOTALL)
         if m:
             section = m.group(1)
 
-    spots = set()
-    # 匹配 **景点名**
-    for m in re.finditer(r'\*\*([^*]{2,20}?)\*\*', section):
-        name = m.group(1).strip()
-        if len(name) >= 2 and not name[0].isdigit():
-            # 排除非景点词
-            skip_words = ['预算', '预订', '注意', '住宿', '美食', '交通', '行李', '清单', 
-                         '出发', '到达', '概览', '行程', '坐标', '航班', '车次', '路线',
-                         '酒店', '民宿', '餐厅', '建议', '提示', '小时', '分钟', '公里',
-                         '门票', '人均', '总计', '上午', '下午', '晚上', '早餐', '午餐', '晚餐']
-            if not any(kw in name for kw in skip_words):
-                spots.add(name)
+    # 按「第X天」分割
+    days_raw = re.split(r'(?:###?\s*)?第\s*(\d+)\s*天', section)
+    # days_raw: ['', '1', '...content...', '2', '...content...', ...]
+    day_spots = {}  # {day_num: [spot_names]}
+    current_day = None
+    for i, chunk in enumerate(days_raw):
+        if i == 0:
+            continue
+        if i % 2 == 1:  # day number
+            current_day = int(chunk)
+        elif current_day is not None:  # content
+            spots = []
+            for m in re.finditer(r'\*\*([^*]{2,20}?)\*\*', chunk):
+                name = m.group(1).strip()
+                if len(name) >= 2 and not name[0].isdigit():
+                    skip_words = ['预算','预订','注意','住宿','美食','交通','行李','清单',
+                                 '出发','到达','概览','行程','坐标','航班','车次','路线',
+                                 '酒店','民宿','餐厅','建议','提示','小时','分钟','公里',
+                                 '门票','人均','总计','上午','下午','晚上','早餐','午餐','晚餐']
+                    if not any(kw in name for kw in skip_words) and name not in spots:
+                        spots.append(name)
+            if spots:
+                day_spots[current_day] = spots
 
-    # 确定搜索城市：优先用目的地城市名
+    # 确定搜索城市
     search_city = req.city
     if search_city in ('', '全国', '云南', '四川', '浙江') or len(search_city) > 4:
-        # 尝试从行程中提取更具体的城市
         city_match = re.search(r'(?:目的地|到达)[：:]\s*([^\n]{2,6})', req.plan_text)
         if not city_match:
             city_match = re.search(r'(大理|丽江|昆明|西双版纳|香格里拉|腾冲|成都|重庆|杭州|苏州|南京|西安|长沙|武汉|厦门|青岛|三亚|北海|桂林)', req.plan_text)
         if city_match:
             search_city = city_match.group(1)
 
-    results = []
-    for name in list(spots)[:8]:
-        try:
-            city_param = urllib.parse.quote(search_city) if search_city else '全国'
-            search_url = f"https://restapi.amap.com/v5/place/text?keywords={urllib.parse.quote(name)}&city={city_param}&key={GAODE_KEY}&offset=1"
-            req_obj = urllib.request.Request(search_url)
-            with urllib.request.urlopen(req_obj, timeout=5) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            pois = data.get("pois", [])
-            if pois:
-                p = pois[0]
-                loc = p.get("location", "0,0").split(",")
-                lat, lng = float(loc[1]) if len(loc) > 1 else 0, float(loc[0]) if len(loc) > 0 else 0
-                # 过滤：如果搜索结果距离目的地太远（跨省），跳过
-                if search_city and search_city not in ('全国', '中国'):
-                    addr = p.get("address", "")
-                    pname = p.get("pname", "")  # 省份
-                    # 如果城市明确且结果省份不匹配，跳过
-                    if pname and search_city not in pname and pname not in search_city:
-                        # 宽松匹配：允许市级搜索
-                        pass
-                results.append({
-                    "name": p.get("name", name),
-                    "lat": lat,
-                    "lng": lng,
-                    "address": p.get("address", ""),
-                })
-        except:
-            pass
+    # 逐天搜索坐标
+    route_data = []
+    seen = set()
+    for day in sorted(day_spots.keys()):
+        day_points = []
+        for name in day_spots[day][:6]:
+            if name in seen:
+                continue
+            seen.add(name)
+            try:
+                city_param = urllib.parse.quote(search_city) if search_city else '全国'
+                search_url = f"https://restapi.amap.com/v5/place/text?keywords={urllib.parse.quote(name)}&city={city_param}&key={GAODE_KEY}&offset=1"
+                req_obj = urllib.request.Request(search_url)
+                with urllib.request.urlopen(req_obj, timeout=5) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                pois = data.get("pois", [])
+                if pois:
+                    p = pois[0]
+                    loc = p.get("location", "0,0").split(",")
+                    lat, lng = float(loc[1]) if len(loc) > 1 else 0, float(loc[0]) if len(loc) > 0 else 0
+                    day_points.append({
+                        "name": p.get("name", name),
+                        "lat": lat, "lng": lng,
+                        "address": p.get("address", ""),
+                    })
+            except:
+                pass
+        if day_points:
+            route_data.append({"day": day, "spots": day_points})
 
-    return {"spots": results}
+    return {"spots": route_data}
 
 
 # ============================================================

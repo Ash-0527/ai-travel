@@ -675,6 +675,34 @@ footer p {
     font-size: 1rem;
 }
 
+/* Budget chart */
+.budget-chart {
+    padding: 20px 28px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+    text-align: center;
+}
+.budget-chart h3 { color: var(--accent); margin-bottom: 16px; font-size: 1rem; }
+.budget-chart canvas { max-width: 280px; margin: 0 auto; display: block; }
+.budget-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 12px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-secondary); }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* Edit mode */
+.edit-area {
+    width: 100%;
+    min-height: 300px;
+    padding: 16px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    resize: vertical;
+}
+
 /* Print styles for PDF export */
 @media print {
     body {

@@ -111,9 +111,15 @@
                         <button class="btn-copy" onclick="copyResult()">📋 复制</button>
                         <button class="btn-share" onclick="shareTrip()">📤 分享</button>
                         <button class="btn-pdf" onclick="exportPDF()">🖨️ 导出PDF</button>
+                        <button class="btn-edit" id="btnEdit" onclick="toggleEdit()">✏️ 编辑</button>
                     </div>
                 </div>
                 <div class="result-body" id="resultBody"></div>
+                <div class="budget-chart" id="budgetChart" style="display:none;">
+                    <h3>💰 预算分配</h3>
+                    <canvas id="budgetCanvas" width="300" height="300"></canvas>
+                    <div id="budgetLegend" class="budget-legend"></div>
+                </div>
                 <div class="weather-box" id="weatherBox" style="display:none;"></div>
                 <div class="map-box" id="mapBox" style="display:none;">
                     <h3>🗺️ 行程地图</h3>

@@ -168,6 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
             searchGaodeSpots(plan, formData.destination)
             // 查询天气
             fetchWeather(formData.destination)
+            // 预算饼图
+            showBudgetChart(plan)
             
         } catch (error) {
             loading.style.display = 'none'
@@ -248,6 +250,7 @@ window.switchPanel = switchPanel
 window.loadTripDetail = loadTripDetail
 window.deleteTrip = deleteTrip
 window.exportPDF = exportPDF
+window.toggleEdit = toggleEdit
 
 // 分享行程 — 打开干净的新页面
 function shareTrip() {
@@ -463,39 +466,55 @@ async function searchGaodeSpots(planText, city) {
             mapBox.style.display = 'none'
             return
         }
-        showMapOnLeaflet(data.spots)
+        showMapWithRoutes(data.spots)
     } catch {
         mapBox.style.display = 'none'
     }
 }
 
-function showMapOnLeaflet(spots) {
+function showMapWithRoutes(daysData) {
     const mapBox = document.getElementById('mapBox')
     mapBox.style.display = 'block'
-
     if (tripMap) { tripMap.remove(); tripMap = null }
 
-    tripMap = L.map('tripMap').setView([spots[0].lat, spots[0].lng], 13)
-    
-    // 使用高德瓦片（中文标注，国内更清晰）
+    // 颜色板：每天不同颜色
+    const colors = ['#ff6b35', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dfe6e9', '#fd79a8']
+    const allPoints = []
+    daysData.forEach(d => d.spots.forEach(s => allPoints.push([s.lat, s.lng])))
+
+    tripMap = L.map('tripMap').setView(allPoints[0], 13)
     L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
-        subdomains: ['1', '2', '3', '4'],
-        attribution: '&copy; 高德地图',
-        maxZoom: 18
+        subdomains: ['1','2','3','4'], attribution: '&copy; 高德地图', maxZoom: 18
     }).addTo(tripMap)
 
     const bounds = []
-    spots.forEach(spot => {
-        const marker = L.marker([spot.lat, spot.lng])
-            .addTo(tripMap)
-            .bindPopup(`<b>${spot.name}</b><br><small>${spot.address || ''}</small>`)
-        bounds.push([spot.lat, spot.lng])
+    daysData.forEach((dayData, di) => {
+        const color = colors[di % colors.length]
+        const spots = dayData.spots
+
+        // 标记
+        spots.forEach((spot, si) => {
+            const icon = L.divIcon({
+                html: `<div style="background:${color};color:#fff;width:22px;height:22px;border-radius:50%;text-align:center;line-height:22px;font-size:11px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.4)">${si + 1}</div>`,
+                iconSize: [22, 22], iconAnchor: [11, 11]
+            })
+            L.marker([spot.lat, spot.lng], { icon })
+                .addTo(tripMap)
+                .bindPopup(`<b>${spot.name}</b><br><small>第${dayData.day}天 · ${spot.address || ''}</small>`)
+            bounds.push([spot.lat, spot.lng])
+        })
+
+        // 路线连线
+        if (spots.length > 1) {
+            const latlngs = spots.map(s => [s.lat, s.lng])
+            L.polyline(latlngs, {
+                color: color, weight: 3, opacity: 0.7,
+                dashArray: di === 0 ? null : '8, 6'
+            }).addTo(tripMap)
+        }
     })
 
-    if (bounds.length > 1) {
-        tripMap.fitBounds(bounds, { padding: [40, 40] })
-    }
-
+    if (bounds.length > 1) tripMap.fitBounds(bounds, { padding: [40, 40] })
     setTimeout(() => tripMap.invalidateSize(), 200)
 }
 
@@ -540,4 +559,111 @@ function showWeather(data) {
 // ============================================================
 function exportPDF() {
     window.print()
+}
+
+// ============================================================
+// 📊 预算可视化饼图
+// ============================================================
+function showBudgetChart(planText) {
+    // 从预算表格提取数据
+    const tableMatch = planText.match(/##\s*💰\s*预算分配[\s\S]*?(\|.*\|[\s\S]*?)(?=##|\Z)/)
+    if (!tableMatch) return
+
+    const lines = tableMatch[1].split('\n').filter(l => l.includes('|'))
+    const items = []
+    // 跳过表头行
+    for (let i = 2; i < lines.length; i++) {
+        const cols = lines[i].split('|').map(c => c.trim()).filter(c => c)
+        if (cols.length >= 2) {
+            const label = cols[0].replace(/[^\u4e00-\u9fa5]/g, '').slice(0, 6)
+            const val = parseInt(cols[1].replace(/[^0-9]/g, '')) || parseInt(cols[cols.length - 1].replace(/[^0-9]/g, ''))
+            if (val && label) items.push({ label, val })
+        }
+    }
+    if (items.length < 2) return
+
+    const chart = document.getElementById('budgetChart')
+    const canvas = document.getElementById('budgetCanvas')
+    const legend = document.getElementById('budgetLegend')
+    chart.style.display = 'block'
+
+    const ctx = canvas.getContext('2d')
+    const total = items.reduce((s, i) => s + i.val, 0)
+    const colors = ['#ff6b35', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#fd79a8', '#a29bfe']
+    const cx = 150, cy = 150, r = 120
+    ctx.clearRect(0, 0, 300, 300)
+
+    let angle = -Math.PI / 2
+    items.forEach((item, i) => {
+        const slice = (item.val / total) * Math.PI * 2
+        ctx.beginPath()
+        ctx.moveTo(cx, cy)
+        ctx.arc(cx, cy, r, angle, angle + slice)
+        ctx.closePath()
+        ctx.fillStyle = colors[i % colors.length]
+        ctx.fill()
+        // 标签
+        const mid = angle + slice / 2
+        const lx = cx + Math.cos(mid) * (r * 0.65)
+        const ly = cy + Math.sin(mid) * (r * 0.65)
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 11px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(Math.round(item.val / total * 100) + '%', lx, ly + 4)
+        angle += slice
+    })
+
+    legend.innerHTML = items.map((item, i) =>
+        `<div class="legend-item"><span class="legend-dot" style="background:${colors[i % colors.length]}"></span>${item.label} ¥${item.val}</div>`
+    ).join('')
+}
+
+// ============================================================
+// ✏️ 编辑行程
+// ============================================================
+let editMode = false
+let originalPlan = ''
+
+function toggleEdit() {
+    const body = document.getElementById('resultBody')
+    const btn = document.getElementById('btnEdit')
+
+    if (!editMode) {
+        // 进入编辑模式
+        originalPlan = body.innerText
+        const ta = document.createElement('textarea')
+        ta.className = 'edit-area'
+        ta.id = 'editArea'
+        ta.value = originalPlan
+        body.innerHTML = ''
+        body.appendChild(ta)
+
+        const saveBtn = document.createElement('button')
+        saveBtn.className = 'btn-save-edit'
+        saveBtn.textContent = '💾 保存修改'
+        saveBtn.onclick = saveEdit
+        body.appendChild(saveBtn)
+
+        btn.textContent = '👁️ 预览'
+        editMode = true
+    } else {
+        // 退出编辑模式
+        saveEdit()
+    }
+}
+
+function saveEdit() {
+    const ta = document.getElementById('editArea')
+    if (!ta) return
+    const newPlan = ta.value
+    const body = document.getElementById('resultBody')
+    if (typeof marked !== 'undefined') {
+        body.innerHTML = marked.parse(newPlan)
+    } else {
+        body.innerHTML = '<pre>' + newPlan + '</pre>'
+    }
+    document.getElementById('btnEdit').textContent = '✏️ 编辑'
+    editMode = false
+    // 更新预算图
+    showBudgetChart(newPlan)
 }
