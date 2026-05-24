@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI旅行私人定制方案生成</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-card: #1a1a1a;
+            --text-primary: #f5f5f5;
+            --text-secondary: #8a8a8a;
+            --text-muted: #5a5a5a;
+            --accent: #c9a962;
+            --accent-light: #e5d4a1;
+            --border: #2a2a2a;
+            --gradient: linear-gradient(135deg, #c9a962 0%, #e5d4a1 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 40px;
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 20px 0;
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 18px;
+            font-weight: 500;
+            letter-spacing: 2px;
+            color: var(--text-primary);
+        }
+
+        .logo span {
+            color: var(--accent);
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-left: 40px;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: var(--accent);
+        }
+
+        /* Hero */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            background: 
+                radial-gradient(ellipse at 20% 50%, rgba(201, 169, 98, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(201, 169, 98, 0.05) 0%, transparent 50%),
+                var(--bg-primary);
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.5;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 40px;
+            text-transform: uppercase;
+        }
+
+        .hero h1 {
+            font-size: 64px;
+            font-weight: 300;
+            letter-spacing: -1px;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        .hero h1 span {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-desc {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 50px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 80px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-num {
+            font-size: 48px;
+            font-weight: 300;
+            color: var(--accent);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 10px;
+            letter-spacing: 1px;
+        }
+
+        /* Section */
+        section {
+            padding: 120px 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .section-label {
+            font-size: 12px;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 36px;
+            font-weight: 300;
+            letter-spacing: -0.5px;
+        }
+
+        /* Pain Points */
+        .pain-points {
+            background: var(--bg-secondary);
+        }
+
+        .pain-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+        }
+
+        .pain-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 40px;
+            transition: all 0.4s ease;
+        }
+
+        .pain-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+        }
+
+        .pain-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+            font-size: 20px;
+        }
+
+        .pain-card h3 {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+
+        .pain-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* Features */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 40px;
+            display: flex;
+            gap: 30px;
+        }
+
+        .feature-num {
+            font-size: 48px;
+            font-weight: 300;
+            color: var(--accent);
+            opacity: 0.3;
+            line-height: 1;
+        }
+
+        .feature-content h3 {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+
+        .feature-content p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* Process */
+        .process {
+            background: var(--bg-secondary);
+        }
+
+        .process-steps {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .process-steps::before {
+            content: '';
+            position: absolute;
+            top: 40px;
+            left: 10%;
+            right: 10%;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .step {
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            padding: 0 20px;
+        }
+
+        .step-circle {
+            width: 80px;
+            height: 80px;
+            background: var(--bg-primary);
+            border: 1px solid var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+            font-size: 24px;
+            color: var(--accent);
+        }
+
+        .step h4 {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .step p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* User Profile */
+        .user-profile {
+            background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+        }
+
+        .profile-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 60px;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .profile-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient);
+        }
+
+        .profile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .profile-title h3 {
+            font-size: 24px;
+            font-weight: 400;
+            margin-bottom: 8px;
+        }
+
+        .profile-title span {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .profile-tags {
+            display: flex;
+            gap: 10px;
+        }
+
+        .profile-tag {
+            padding: 6px 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .profile-tags .tag-highlight {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .profile-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+        }
+
+        .info-block h5 {
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 15px;
+        }
+
+        .info-block ul {
+            list-style: none;
+        }
+
+        .info-block li {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            padding-left: 15px;
+            position: relative;
+        }
+
+        .info-block li::before {
+            content: '·';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }
+
+        /* Deliverables */
+        .deliverables-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .deliverable {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .deliverable:hover {
+            border-color: var(--accent);
+        }
+
+        .deliverable-icon {
+            font-size: 32px;
+            margin-bottom: 20px;
+            opacity: 0.8;
+        }
+
+        .deliverable h4 {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .deliverable p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Tools */
+        .tools {
+            background: var(--bg-secondary);
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .tool-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 25px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .tool-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .tool-info h4 {
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .tool-info p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        footer p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 24px;
+            }
+
+            .hero h1 {
+                font-size: 36px;
+            }
+
+            .hero-stats {
+                flex-direction: column;
+                gap: 40px;
+            }
+
+            .pain-grid,
+            .features-grid,
+            .deliverables-grid,
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .process-steps {
+                flex-direction: column;
+                gap: 40px;
+            }
+
+            .process-steps::before {
+                display: none;
+            }
+
+            .profile-info {
+                grid-template-columns: 1fr;
+            }
+
+            nav {
+                display: none;
+            }
+
+            .profile-card {
+                padding: 30px;
+            }
+        }
+
+        /* Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-content > * {
+            animation: fadeInUp 0.8s ease forwards;
+        }
+
+        .hero-content > *:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .hero-content > *:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        .hero-content > *:nth-child(4) {
+            animation-delay: 0.6s;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">AI <span>Travel</span></div>
+            <nav>
+                <a href="#pain">痛点</a>
+                <a href="#features">功能</a>
+                <a href="#process">流程</a>
+                <a href="#tools">工具</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">Personal Travel AI</div>
+            <h1>AI旅行私人<br><span>定制方案生成</span></h1>
+            <p class="hero-desc">
+                告别手动刷小红书、抖音搜集攻略的烦恼<br>
+                只需提供目的地和偏好，AI帮你一键生成每日详细行程
+            </p>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-num">60%</div>
+                    <div class="stat-label">时间节省</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-num">7天</div>
+                    <div class="stat-label">快速验证</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-num">0元</div>
+                    <div class="stat-label">工具成本</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="pain-points" id="pain">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Pain Points</div>
+                <h2 class="section-title">核心痛点</h2>
+            </div>
+            <div class="pain-grid">
+                <div class="pain-card">
+                    <div class="pain-icon">📱</div>
+                    <h3>信息过载</h3>
+                    <p>同样的目的地搜到几百篇攻略，内容大同小异，筛选起来耗时耗力</p>
+                </div>
+                <div class="pain-card">
+                    <div class="pain-icon">🔍</div>
+                    <h3>决策困难</h3>
+                    <p>网红餐厅到底值不值得去？民宿图片和实际差距多大？怕踩雷怕被坑</p>
+                </div>
+                <div class="pain-card">
+                    <div class="pain-icon">🗺️</div>
+                    <h3>路线规划麻烦</h3>
+                    <p>景点之间距离多远？怎么走最省时间？串联路线要花大量时间研究</p>
+                </div>
+                <div class="pain-card">
+                    <div class="pain-icon">⏰</div>
+                    <h3>时间紧迫</h3>
+                    <p>周五下班才决定周末出游，现做攻略根本来不及，冲动想去的想法只能作罢</p>
+                </div>
+                <div class="pain-card">
+                    <div class="pain-icon">🚫</div>
+                    <h3>不想排队</h3>
+                </div>
+                <div class="pain-card">
+                    <div class="pain-icon">💰</div>
+                    <h3>预算把控难</h3>
+                    <p>不知道每个地方花多少钱合适，经常超预算或者花冤枉钱</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="features">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Features</div>
+                <h2 class="section-title">解决方案</h2>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-num">01</div>
+                    <div class="feature-content">
+                        <h3>一键生成行程</h3>
+                        <p>告诉AI目的地、天数、预算、偏好，自动生成包含每日景点、交通、住宿、美食的完整方案</p>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-num">02</div>
+                    <div class="feature-content">
+                        <h3>节奏偏好切换</h3>
+                        <p>支持特种兵式/放松度假式/综合混搭式三种节奏，一键切换方案风格</p>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-num">03</div>
+                    <div class="feature-content">
+                        <h3>双人需求整合</h3>
+                        <p>针对情侣/朋友出行，自动平衡双方偏好（女生爱拍照打卡，男生喜欢随意）</p>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-num">04</div>
+                    <div class="feature-content">
+                        <h3>人工验证补充</h3>
+                        <p>AI生成初版方案，人工验证关键信息（价格、排队、营业时间），确保可行</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="process" id="process">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Process</div>
+                <h2 class="section-title">使用流程</h2>
+            </div>
+            <div class="process-steps">
+                <div class="step">
+                    <div class="step-circle">1</div>
+                    <h4>提出需求</h4>
+                    <p>填写目的地、天数、预算、偏好</p>
+                </div>
+                <div class="step">
+                    <div class="step-circle">2</div>
+                    <h4>AI 生成</h4>
+                    <p>ChatGPT 一键生成初版方案</p>
+                </div>
+                <div class="step">
+                    <div class="step-circle">3</div>
+                    <h4>确认偏好</h4>
+                    <p>标记不满意的地方，AI 优化</p>
+                </div>
+                <div class="step">
+                    <div class="step-circle">4</div>
+                    <h4>人工验证</h4>
+                    <p>携程/小红书验证关键信息</p>
+                </div>
+                <div class="step">
+                    <div class="step-circle">5</div>
+                    <h4>交付执行</h4>
+                    <p>拿到最终版行程表，直接出行</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="user-profile">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Target User</div>
+                <h2 class="section-title">目标用户画像</h2>
+            </div>
+            <div class="profile-card">
+                <div class="profile-header">
+                    <div class="profile-title">
+                        <h3>22岁情侣</h3>
+                        <span>双人出行代表</span>
+                    </div>
+                    <div class="profile-tags">
+                        <span class="profile-tag">拍照打卡</span>
+                        <span class="profile-tag">不爱排队</span>
+                        <span class="profile-tag tag-highlight">懒人党</span>
+                    </div>
+                </div>
+                <div class="profile-info">
+                    <div class="info-block">
+                        <h5>女生偏好</h5>
+                        <ul>
+                            <li>喜欢拍照，喜欢漂亮风景</li>
+                            <li>喜欢到处打卡发朋友圈</li>
+                            <li>不喜欢排队太久</li>
+                        </ul>
+                    </div>
+                    <div class="info-block">
+                        <h5>男生偏好</h5>
+                        <ul>
+                            <li>喜欢随意一点，放松一点</li>
+                            <li>不想做详细的攻略</li>
+                            <li>愿意配合女朋友</li>
+                        </ul>
+                    </div>
+                    <div class="info-block">
+                        <h5>共同特征</h5>
+                        <ul>
+                            <li>双方可以互相迁就</li>
+                            <li>不想花太多时间做攻略</li>
+                            <li>希望直接拿到可执行的方案</li>
+                        </ul>
+                    </div>
+                    <div class="info-block">
+                        <h5>典型场景</h5>
+                        <ul>
+                            <li>周末短途游（2-3天）</li>
+                            <li>长途打卡游（5-7天）</li>
+                            <li>美食寻味游（3-4天）</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Deliverables</div>
+                <h2 class="section-title">交付物</h2>
+            </div>
+            <div class="deliverables-grid">
+                <div class="deliverable">
+                    <div class="deliverable-icon">📋</div>
+                    <h4>每日行程表</h4>
+                    <p>详细到每个小时的安排</p>
+                </div>
+                <div class="deliverable">
+                    <div class="deliverable-icon">💰</div>
+                    <h4>预算分配表</h4>
+                    <p>交通/住宿/餐饮/门票</p>
+                </div>
+                <div class="deliverable">
+                    <div class="deliverable-icon">📝</div>
+                    <h4>预订清单</h4>
+                    <p>待预订项目一目了然</p>
+                </div>
+                <div class="deliverable">
+                    <div class="deliverable-icon">⚠️</div>
+                    <h4>注意事项</h4>
+                    <p>预约/排队/季节提醒</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="tools" id="tools">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-label">Tools</div>
+                <h2 class="section-title">使用工具</h2>
+            </div>
+            <div class="tools-grid">
+                <div class="tool-item">
+                    <div class="tool-icon">🤖</div>
+                    <div class="tool-info">
+                        <h4>ChatGPT</h4>
+                        <p>核心大脑 · 方案生成</p>
+                    </div>
+                </div>
+                <div class="tool-item">
+                    <div class="tool-icon">🔍</div>
+                    <div class="tool-info">
+                        <h4>Perplexity</h4>
+                        <p>信息搜索 · 实时验证</p>
+                    </div>
+                </div>
+                <div class="tool-item">
+                    <div class="tool-icon">🗂️</div>
+                    <div class="tool-info">
+                        <h4>携程</h4>
+                        <p>景点 · 住宿 · 机票</p>
+                    </div>
+                </div>
+                <div class="tool-item">
+                    <div class="tool-icon">🚄</div>
+                    <div class="tool-info">
+                        <h4>12306</h4>
+                        <p>高铁票 · 时刻查询</p>
+                    </div>
+                </div>
+                <div class="tool-item">
+                    <div class="tool-icon">🗺️</div>
+                    <div class="tool-info">
+                        <h4>高德地图</h4>
+                        <p>路线 · 距离 · 导航</p>
+                    </div>
+                </div>
+                <div class="tool-item">
+                    <div class="tool-icon">📕</div>
+                    <div class="tool-info">
+                        <h4>小红书</h4>
+                        <p>实时评价 · 排队情况</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>AI旅行私人定制方案生成 · MVP验证版</p>
+            <p style="margin-top: 10px; color: var(--text-muted);">2026 · Personal Project</p>
+        </div>
+    </footer>
+</body>
+</html>
