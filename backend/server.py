@@ -352,59 +352,60 @@ def gaode_search(req: PlanTextRequest):
     """从行程方案中提取景点名，通过高德搜索真实坐标，按天分组"""
     # 提取「每日详细行程」section
     section = req.plan_text
-    m = re.search(r'##\s*🗓️\s*每日详细行程\s*\n(.*?)(?=##\s|\Z)', req.plan_text, re.DOTALL)
+    # 尝试多种章节匹配
+    m = re.search(r'##\s*(?:🗓️\s*)?每日详细行程\s*\n(.*?)(?=##\s|\Z)', req.plan_text, re.DOTALL)
+    if not m:
+        m = re.search(r'##\s*(?:🗺️\s*)?景点坐标.*?\n(.*?)(?=##\s|\Z)', req.plan_text, re.DOTALL)
+    if not m:
+        # 宽松匹配：任何含"行程"的二级标题
+        m = re.search(r'##\s*[^\n]*行程[^\n]*\n(.*?)(?=##\s|\Z)', req.plan_text, re.DOTALL)
     if m:
         section = m.group(1)
-    else:
-        m = re.search(r'##\s*🗺️\s*景点坐标.*?\n(.*?)(?=##\s|\Z)', req.plan_text, re.DOTALL)
-        if m:
-            section = m.group(1)
 
-    # 按「第X天」分割
-    day_spots = {}
-    days_raw = re.split(r'(?:###?\s*)?(?:第|Day\s*)\s*(\d+)\s*(?:天|日)', section)
-    # 如果没匹配到，回退：全文提取不分天
-    if len(days_raw) <= 2:
-        all_spots = []
-        for m in re.finditer(r'\*\*([^*]{2,20}?)\*\*', section):
+    # 从 section 中提取加粗文本作为景点名
+    def extract_names(text):
+        names = []
+        for m in re.finditer(r'\*\*([^*]{2,20}?)\*\*', text):
             name = m.group(1).strip()
-            if len(name) >= 2 and not name[0].isdigit():
+            if len(name) >= 2 and not name[0].isdigit() and not re.match(r'^[\d\-:：]+$', name):
                 skip_words = ['预算','预订','注意','住宿','美食','交通','行李','清单',
                              '出发','到达','概览','行程','坐标','航班','车次','路线',
                              '酒店','民宿','餐厅','建议','提示','小时','分钟','公里',
-                             '门票','人均','总计','上午','下午','晚上','早餐','午餐','晚餐']
-                if not any(kw in name for kw in skip_words) and name not in all_spots:
-                    all_spots.append(name)
-        if all_spots:
-            day_spots = {1: all_spots}
-    else:
-        # days_raw: ['', '1', '...content...', '2', '...content...', ...]
+                             '门票','人均','总计','上午','下午','晚上','早餐','午餐','晚餐',
+                             '备注','提示','说明','费用','总价','合计','预估','参考']
+                if not any(kw in name for kw in skip_words):
+                    names.append(name)
+        return names
+
+    day_spots = {}
+    days_raw = re.split(r'(?:###?\s*)?(?:第|Day\s*)\s*(\d+)\s*(?:天|日)', section)
+    if len(days_raw) > 2:
         current_day = None
         for i, chunk in enumerate(days_raw):
-            if i == 0:
-                continue
-            if i % 2 == 1:  # day number
+            if i == 0: continue
+            if i % 2 == 1:
                 current_day = int(chunk)
-            elif current_day is not None:  # content
-                spots = []
-                for m in re.finditer(r'\*\*([^*]{2,20}?)\*\*', chunk):
-                    name = m.group(1).strip()
-                    if len(name) >= 2 and not name[0].isdigit():
-                        skip_words = ['预算','预订','注意','住宿','美食','交通','行李','清单',
-                                     '出发','到达','概览','行程','坐标','航班','车次','路线',
-                                     '酒店','民宿','餐厅','建议','提示','小时','分钟','公里',
-                                     '门票','人均','总计','上午','下午','晚上','早餐','午餐','晚餐']
-                        if not any(kw in name for kw in skip_words) and name not in spots:
-                            spots.append(name)
+            elif current_day is not None:
+                spots = extract_names(chunk)
                 if spots:
-                    day_spots[current_day] = spots
+                    day_spots[current_day] = list(dict.fromkeys(spots))  # 去重保序
+    # 没分天则全文提取
+    if not day_spots:
+        all_spots = extract_names(section)
+        if all_spots:
+            day_spots = {1: list(dict.fromkeys(all_spots))}
+    # 还是空的？从整个plan全文提取
+    if not day_spots:
+        all_spots = extract_names(req.plan_text)[:10]
+        if all_spots:
+            day_spots = {1: all_spots}
 
     # 确定搜索城市
     search_city = req.city
-    if search_city in ('', '全国', '云南', '四川', '浙江') or len(search_city) > 4:
+    if search_city in ('', '全国', '云南', '四川', '浙江', '黑龙江', '吉林', '辽宁', '广东', '广西', '贵州') or len(search_city) > 3:
         city_match = re.search(r'(?:目的地|到达)[：:]\s*([^\n]{2,6})', req.plan_text)
         if not city_match:
-            city_match = re.search(r'(大理|丽江|昆明|西双版纳|香格里拉|腾冲|成都|重庆|杭州|苏州|南京|西安|长沙|武汉|厦门|青岛|三亚|北海|桂林)', req.plan_text)
+            city_match = re.search(r'(大理|丽江|昆明|西双版纳|香格里拉|腾冲|成都|重庆|杭州|苏州|南京|西安|长沙|武汉|厦门|青岛|三亚|北海|桂林|哈尔滨|长春|沈阳|大连)', req.plan_text)
         if city_match:
             search_city = city_match.group(1)
 
