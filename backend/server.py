@@ -157,6 +157,15 @@ def generate_plan(req: TravelRequest):
     # 自动保存行程历史
     save_trip(req.origin, req.destination, req.start_date, req.days, req.budget, req.pace, req.preferences, plan)
 
+    # 自动添加倒数日（如果还没有的话）
+    existing = get_countdowns()
+    already = any(
+        c["destination"] == req.destination and c["departure_date"] == req.start_date
+        for c in existing
+    )
+    if not already:
+        add_countdown(req.destination, req.start_date, f"{req.days}天行程")
+
     return {"plan": plan}
 
 @app.post("/api/generate-image")

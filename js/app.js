@@ -112,6 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // 刷新历史面板
             loadHistory()
+            // 同时刷新倒数日面板
+            loadCountdowns()
             
         } catch (error) {
             loading.style.display = 'none'
