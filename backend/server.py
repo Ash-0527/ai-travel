@@ -15,6 +15,7 @@ import os
 import math
 import re
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 把 RAG 脚本的路径加进来
 sys.path.insert(0, "/mnt/d/大模型学习资料/ai旅行")
@@ -407,36 +408,43 @@ def gaode_search(req: PlanTextRequest):
         if city_match:
             search_city = city_match.group(1)
 
-    # 逐天搜索坐标
-    route_data = []
+    # 收集所有待搜索的景点
+    search_tasks = []  # [(day, name)]
     seen = set()
     for day in sorted(day_spots.keys()):
-        day_points = []
-        for name in day_spots[day][:6]:
-            if name in seen:
-                continue
-            seen.add(name)
-            try:
-                city_param = urllib.parse.quote(search_city) if search_city else '全国'
-                search_url = f"https://restapi.amap.com/v5/place/text?keywords={urllib.parse.quote(name)}&city={city_param}&key={GAODE_KEY}&offset=1"
-                req_obj = urllib.request.Request(search_url)
-                with urllib.request.urlopen(req_obj, timeout=5) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
-                pois = data.get("pois", [])
-                if pois:
-                    p = pois[0]
-                    loc = p.get("location", "0,0").split(",")
-                    lat, lng = float(loc[1]) if len(loc) > 1 else 0, float(loc[0]) if len(loc) > 0 else 0
-                    day_points.append({
-                        "name": p.get("name", name),
-                        "lat": lat, "lng": lng,
-                        "address": p.get("address", ""),
-                    })
-            except:
-                pass
-        if day_points:
-            route_data.append({"day": day, "spots": day_points})
+        for name in day_spots[day][:5]:
+            if name not in seen:
+                seen.add(name)
+                search_tasks.append((day, name))
 
+    # 并行搜索高德 POI
+    def search_one(day, name):
+        try:
+            city_param = urllib.parse.quote(search_city) if search_city else '全国'
+            search_url = f"https://restapi.amap.com/v5/place/text?keywords={urllib.parse.quote(name)}&city={city_param}&key={GAODE_KEY}&offset=1"
+            req_obj = urllib.request.Request(search_url)
+            with urllib.request.urlopen(req_obj, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            pois = data.get("pois", [])
+            if pois:
+                p = pois[0]
+                loc = p.get("location", "0,0").split(",")
+                lat, lng = float(loc[1]) if len(loc) > 1 else 0, float(loc[0]) if len(loc) > 0 else 0
+                return (day, {"name": p.get("name", name), "lat": lat, "lng": lng, "address": p.get("address", "")})
+        except:
+            pass
+        return None
+
+    day_results = {}
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(search_one, d, n): (d, n) for d, n in search_tasks}
+        for f in as_completed(futures, timeout=20):
+            result = f.result()
+            if result:
+                day, spot = result
+                day_results.setdefault(day, []).append(spot)
+
+    route_data = [{"day": day, "spots": day_results[day]} for day in sorted(day_results.keys()) if day_results[day]]
     return {"spots": route_data}
 
 

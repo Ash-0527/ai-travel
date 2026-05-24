@@ -458,19 +458,24 @@ let tripMap = null
 async function searchGaodeSpots(planText, city) {
     const mapBox = document.getElementById('mapBox')
     try {
+        console.log('[地图] 开始高德搜索, city:', city, 'text长度:', planText?.length)
         const resp = await fetch(`${BACKEND_URL}/api/gaode-search`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ plan_text: planText, city: city })
+            body: JSON.stringify({ plan_text: planText, city: city }),
+            signal: AbortSignal.timeout(30000)
         })
-        if (!resp.ok) throw new Error('搜索失败')
+        if (!resp.ok) throw new Error('HTTP ' + resp.status)
         const data = await resp.json()
+        console.log('[地图] 搜索结果:', JSON.stringify(data).slice(0, 300))
         if (!data.spots || data.spots.length === 0) {
+            console.log('[地图] 无结果，隐藏')
             mapBox.style.display = 'none'
             return
         }
         showMapWithRoutes(data.spots)
-    } catch {
+    } catch (e) {
+        console.error('[地图] 错误:', e.message || e)
         mapBox.style.display = 'none'
     }
 }
