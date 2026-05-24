@@ -11,6 +11,9 @@ __pycache__/
 # 向量库（太大，含 API Key 调用痕迹）
 vector_db.json
 
+# 数据库文件（包含用户隐私数据）
+*.db
+
 # 临时文件
 temp_*
 *.tmp
