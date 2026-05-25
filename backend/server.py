@@ -22,8 +22,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 from rag_demo import search, load_vector_db, generate_answer
-from db import init_db, save_prefs, load_prefs, save_trip, list_trips, get_trip, delete_history, delete_countdown_by_dest
-from db import add_countdown, get_countdowns, delete_countdown
+from backend.db import init_db, save_prefs, load_prefs, save_trip, list_trips, get_trip, delete_history, delete_countdown_by_dest
+from backend.db import add_countdown, get_countdowns, delete_countdown
 
 app = FastAPI(title="AI Travel API")
 

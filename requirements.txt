@@ -1,0 +1,8 @@
+# Core
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# No other third-party dependencies needed.
+# Standard library modules used:
+#   json, urllib, os, math, re, sys, pathlib, sqlite3, logging
+#   concurrent.futures (ThreadPoolExecutor)

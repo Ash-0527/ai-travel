@@ -8,8 +8,7 @@
 
 ## 🖼️ 项目截图
 
-<!-- TODO: 补充截图 -->
-*（部署后截图放在这里：首页表单、行程结果页、地图路线、预算饼图）*
+> 截图待补充，截图清单见 [docs/screenshots/README.md](docs/screenshots/README.md)
 
 ---
 
@@ -83,16 +82,21 @@ git clone https://github.com/Ash-0527/ai-travel.git
 cd ai-travel
 
 # 2. 设置环境变量
+# 方式一：直接在终端中导出（推荐，无需额外依赖）
 export ZHIPU_API_KEY="你的智谱Key"
 export GAODE_API_KEY="你的高德Key"
-# 或复制并编辑 .env.example
+
+# 方式二：参考 .env.example 创建 .env 文件，然后在终端中 source .env
+# （项目不自动读取 .env 文件，需手动执行 source .env 加载环境变量）
 
 # 3. 安装依赖
-pip install fastapi uvicorn
+pip install -r requirements.txt
 
-# 4. 启动后端
-cd backend
-python server.py
+# 4. 启动后端（从项目根目录运行）
+uvicorn backend.server:app --host 0.0.0.0 --port 8080 --reload
+
+# 如果希望直接运行 Python 脚本
+python backend/server.py
 
 # 5. 打开浏览器
 # http://localhost:8080

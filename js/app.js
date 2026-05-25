@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     resultBody.innerHTML = ''
                                 }
                                 // 逐字追加渲染
-                                resultBody.innerHTML = marked.parse(plan)
+                                resultBody.innerHTML = DOMPurify.sanitize(marked.parse(plan))
                                 resultSection.scrollIntoView({ behavior: 'smooth', block: 'end' })
                             }
                         } catch {}
@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (loading.style.display !== 'none') {
                 loading.style.display = 'none'
                 resultContent.style.display = 'block'
-                resultBody.innerHTML = typeof marked !== 'undefined' ? marked.parse(plan) : '<pre>' + plan + '</pre>'
+                resultBody.innerHTML = typeof marked !== 'undefined' ? DOMPurify.sanitize(marked.parse(plan)) : '<pre>' + plan + '</pre>'
             }
             
             // 生图
@@ -432,7 +432,7 @@ async function loadTripDetail(id) {
         const resultSection = document.getElementById('result')
 
         if (typeof marked !== 'undefined') {
-            resultBody.innerHTML = marked.parse(trip.plan)
+            resultBody.innerHTML = DOMPurify.sanitize(marked.parse(trip.plan))
         } else {
             resultBody.innerHTML = '<pre>' + trip.plan + '</pre>'
         }
@@ -671,7 +671,7 @@ function saveEdit() {
     const newPlan = ta.value
     const body = document.getElementById('resultBody')
     if (typeof marked !== 'undefined') {
-        body.innerHTML = marked.parse(newPlan)
+        body.innerHTML = DOMPurify.sanitize(marked.parse(newPlan))
     } else {
         body.innerHTML = '<pre>' + newPlan + '</pre>'
     }
