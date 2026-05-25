@@ -8,7 +8,10 @@
 
 ## 🖼️ 项目截图
 
-> 截图待补充，截图清单见 [docs/screenshots/README.md](docs/screenshots/README.md)
+![首页](docs/screenshots/首页.png)
+![行程结果](docs/screenshots/结果-行程.png)
+![地图路线](docs/screenshots/结果-地图.png)
+![预算与天气](docs/screenshots/结果-预算、天气.png)
 
 ---
 
