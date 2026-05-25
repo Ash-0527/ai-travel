@@ -47,12 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return
         }
 
-        // 检查 API Key（仅前端直连模式需要）
-        if (!AI_CONFIG.apiKey) {
-            showApiKeyPrompt()
-            return
-        }
-        
         // 显示加载状态
         resultSection.style.display = 'block'
         loading.style.display = 'block'
@@ -342,7 +336,7 @@ function showApiKeyPrompt() {
 function updateKeyStatus() {
     const label = document.getElementById('apiKeyLabel')
     if (label) {
-        label.textContent = AI_CONFIG.apiKey ? '✅ API Key 已设置（点击修改）' : '未设置API Key（点击设置）'
+        label.textContent = AI_CONFIG.apiKey ? '✅ 已使用自定义 API Key（点击更换）' : 'AI 由服务器提供（无需配置）'
     }
 }
 
