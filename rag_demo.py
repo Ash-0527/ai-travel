@@ -12,11 +12,17 @@ import urllib.error
 # ============================================================
 # 配置
 # ============================================================
-ZHIPU_API_KEY = os.environ.get("ZHIPU_API_KEY", "259a8d14a01049c5882a313db56eb72b.6mJllCcegeLaMV4O")
+ZHIPU_API_KEY = os.environ.get("ZHIPU_API_KEY", "")
 EMBEDDING_MODEL = "embedding-2"
 CHAT_MODEL = "glm-4"
-KB_DIR = "/mnt/d/大模型学习资料/ai旅行/知识库"
-VECTOR_DB_FILE = "/mnt/d/大模型学习资料/ai旅行/知识库/vector_db.json"
+
+# 项目根目录（基于本文件位置推导，兼容所有系统）
+import sys
+from pathlib import Path
+PROJECT_ROOT = Path(__file__).resolve().parent if "__file__" in dir() else Path.cwd()
+sys.path.insert(0, str(PROJECT_ROOT))
+KB_DIR = str(PROJECT_ROOT / "知识库")
+VECTOR_DB_FILE = str(PROJECT_ROOT / "知识库" / "vector_db.json")
 
 # ============================================================
 # ① 文档切片

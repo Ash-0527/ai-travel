@@ -17,8 +17,10 @@ import re
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# 把 RAG 脚本的路径加进来
-sys.path.insert(0, "/mnt/d/大模型学习资料/ai旅行")
+# 项目根目录（基于本文件位置推导，兼容所有系统）
+from pathlib import Path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 from rag_demo import search, load_vector_db, generate_answer
 from db import init_db, save_prefs, load_prefs, save_trip, list_trips, get_trip, delete_history, delete_countdown_by_dest
 from db import add_countdown, get_countdowns, delete_countdown
@@ -28,10 +30,10 @@ app = FastAPI(title="AI Travel API")
 # 初始化数据库
 init_db()
 
-# 允许前端跨域访问
+# 允许前端跨域访问（开发模式宽松，生产部署建议改为具体域名）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -42,7 +44,7 @@ app.add_middleware(
 ZHIPU_API_KEY = os.environ.get("ZHIPU_API_KEY", "")
 CHAT_MODEL = "glm-4"
 IMAGE_MODEL = "cogview-3-flash"
-GAODE_KEY = "7cdd7af52f093440a211cb7db78f59df"  # 高德地图 Web服务 Key
+GAODE_KEY = os.environ.get("GAODE_API_KEY", "")  # 高德地图 Web服务 Key，通过环境变量设置
 
 # 启动检查
 if not ZHIPU_API_KEY and __name__ == "__main__":
@@ -206,8 +208,8 @@ def generate_plan(req: TravelRequest, stream: bool = Query(False)):
                     existing = get_countdowns()
                     if not any(c["destination"] == req.destination and c["departure_date"] == req.start_date for c in existing):
                         add_countdown(req.destination, req.start_date, f"{req.days}天行程")
-                except:
-                    pass
+                except Exception:
+                    pass  # 倒数日保存失败不影响主流程
             yield "data: [DONE]\n\n"
 
     return StreamingResponse(stream_response(), media_type="text/event-stream")
@@ -309,33 +311,36 @@ def get_weather(city: str):
         with urllib.request.urlopen(req_obj, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         
-        # 提取关键信息
-        weather = data.get("weather", [{}])[0] if data.get("weather") else {}
-        current = data.get("current_condition", [{}])[0] if data.get("current_condition") else {}
+        current = (data.get("current_condition") or [{}])[0]
         
+        # wttr.in 的 weather 数组每个元素代表一天
+        weather_days = data.get("weather", [])
         forecast = []
-        for day in weather.get("astronomy", []):
+        for day in weather_days[:5]:
+            hourly = day.get("hourly", [])
+            desc = ""
+            if hourly and len(hourly) > 3:
+                h = hourly[4]  # 中午时段
+                lang = h.get("lang_zh", [{}])
+                desc = lang[0].get("value", "") if lang else ""
             forecast.append({
                 "date": day.get("date", ""),
                 "max_temp": day.get("maxtempC", ""),
                 "min_temp": day.get("mintempC", ""),
-                "sunrise": day.get("sunrise", ""),
-                "sunset": day.get("sunset", ""),
+                "desc": desc
             })
-        # 合并 hourly 的天气描述
-        hourly = weather.get("hourly", [])
-        for i, f in enumerate(forecast[:7]):
-            idx = i * 8  # 每天取一个时段
-            if idx < len(hourly):
-                desc = hourly[idx].get("lang_zh", [{}])
-                f["desc"] = desc[0].get("value", "") if desc else ""
+        
+        current_desc = ""
+        cur_lang = current.get("lang_zh", [{}])
+        if cur_lang:
+            current_desc = cur_lang[0].get("value", "")
         
         return {
             "city": city,
             "current_temp": current.get("temp_C", ""),
-            "current_desc": (current.get("lang_zh", [{}]) or [{}])[0].get("value", ""),
+            "current_desc": current_desc,
             "humidity": current.get("humidity", ""),
-            "forecast": forecast[:5]  # 未来5天
+            "forecast": forecast
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"天气查询失败: {str(e)}")
@@ -432,8 +437,8 @@ def gaode_search(req: PlanTextRequest):
                 loc = p.get("location", "0,0").split(",")
                 lat, lng = float(loc[1]) if len(loc) > 1 else 0, float(loc[0]) if len(loc) > 0 else 0
                 return (day, {"name": p.get("name", name), "lat": lat, "lng": lng, "address": p.get("address", "")})
-        except:
-            pass
+        except Exception:
+            pass  # 单个POI搜索失败不影响全局
         return None
 
     day_results = {}

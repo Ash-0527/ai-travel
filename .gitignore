@@ -21,6 +21,7 @@ temp_*
 # 知识库资料（太大，不适合放代码仓库）
 知识库/
 
-# 系统文件
+# 环境变量（含 API Key）
+.env
 .DS_Store
 Thumbs.db
